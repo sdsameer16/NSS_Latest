@@ -731,7 +731,9 @@ useEffect(() => {
             </div>
             <div className="flex-1 p-4 overflow-hidden">
               <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewFile.url)}&embedded=true`}
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(
+                  previewFile.url.replace('/raw/upload/', '/image/upload/fl_attachment/')
+                )}&embedded=true`}
                 className="w-full h-full border-0 rounded"
                 title="File Preview"
               />

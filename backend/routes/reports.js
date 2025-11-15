@@ -464,11 +464,11 @@ router.post('/student/submit', [auth, authorize('student'), upload.array('files'
 
         const result = await cloudinary.uploader.upload(dataURI, {
           folder: `nss-reports/${eventId}`,
-          resource_type: 'raw',
+          resource_type: 'auto', // Auto-detect file type (works better for PDFs/docs)
           public_id: publicId,
-          // Add flags to allow inline viewing instead of forcing download
           type: 'upload',
-          access_mode: 'public'
+          access_mode: 'public',
+          flags: 'attachment' // This allows inline viewing
         });
 
         uploadedFiles.push({
