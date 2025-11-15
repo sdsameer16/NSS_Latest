@@ -437,18 +437,10 @@ router.post('/student/submit', [auth, authorize('student'), upload.array('files'
       return res.status(400).json({ message: 'You have already submitted a report for this event' });
     }
 
-    // Upload files to Cloudinary
+    // Upload files to Cloudinary using upload_stream (more reliable than base64 data URI)
     const uploadedFiles = [];
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const b64 = Buffer.from(file.buffer).toString('base64');
-        const dataURI = `data:${file.mimetype};base64,${b64}`;
-
-        // Extract original extension (e.g. pdf, docx)
-        const originalExt = (path.extname(file.originalname || '') || '')
-          .toLowerCase()
-          .replace('.', '');
-
         // Build a safe base name without extension
         const baseName = path.basename(file.originalname || 'upload', path.extname(file.originalname || ''));
         const safeBaseName = baseName
@@ -457,17 +449,24 @@ router.post('/student/submit', [auth, authorize('student'), upload.array('files'
           .replace(/(^-|-$)+/g, '')
           .slice(0, 60) || 'upload';
 
-        // Include extension in public_id for raw files
-        const publicId = originalExt
-          ? `${Date.now()}-${safeBaseName}.${originalExt}`
-          : `${Date.now()}-${safeBaseName}`;
+        const publicId = `${Date.now()}-${safeBaseName}`;
 
-        const result = await cloudinary.uploader.upload(dataURI, {
-          folder: `nss-reports/${eventId}`,
-          resource_type: 'raw', // Use raw for PDFs and documents
-          public_id: publicId,
-          type: 'upload',
-          access_mode: 'public'
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: `nss-reports/${eventId}`,
+              resource_type: 'auto',
+              public_id: publicId
+            },
+            (error, result) => {
+              if (error) {
+                return reject(error);
+              }
+              resolve(result);
+            }
+          );
+
+          uploadStream.end(file.buffer);
         });
 
         uploadedFiles.push({
