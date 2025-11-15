@@ -272,13 +272,29 @@ const AdminEvents = () => {
               </div>
             </div>
             <div className="flex-1 p-4 overflow-hidden">
-              <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(
-                  previewFile.url.replace('/raw/upload/', '/image/upload/fl_attachment/')
-                )}&embedded=true`}
-                className="w-full h-full border-0 rounded"
-                title="File Preview"
-              />
+              {previewFile.url.toLowerCase().endsWith('.pdf') || previewFile.url.includes('.pdf') ? (
+                <object
+                  data={previewFile.url}
+                  type="application/pdf"
+                  className="w-full h-full rounded"
+                >
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    <p className="mb-4">PDF preview not available in this browser.</p>
+                    <button
+                      onClick={() => window.open(previewFile.url, '_blank')}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                    >
+                      Open in New Tab
+                    </button>
+                  </div>
+                </object>
+              ) : (
+                <iframe
+                  src={previewFile.url}
+                  className="w-full h-full border-0 rounded"
+                  title="File Preview"
+                />
+              )}
             </div>
           </div>
         </div>
