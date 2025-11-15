@@ -457,17 +457,17 @@ router.post('/student/submit', [auth, authorize('student'), upload.array('files'
           .replace(/(^-|-$)+/g, '')
           .slice(0, 60) || 'upload';
 
-        // Don't include extension in public_id when using resource_type: 'auto'
-        // Cloudinary will add it automatically based on the file type
-        const publicId = `${Date.now()}-${safeBaseName}`;
+        // Include extension in public_id for raw files
+        const publicId = originalExt
+          ? `${Date.now()}-${safeBaseName}.${originalExt}`
+          : `${Date.now()}-${safeBaseName}`;
 
         const result = await cloudinary.uploader.upload(dataURI, {
           folder: `nss-reports/${eventId}`,
-          resource_type: 'auto', // Auto-detect file type (works better for PDFs/docs)
+          resource_type: 'raw', // Use raw for PDFs and documents
           public_id: publicId,
           type: 'upload',
-          access_mode: 'public',
-          flags: 'attachment' // This allows inline viewing
+          access_mode: 'public'
         });
 
         uploadedFiles.push({
