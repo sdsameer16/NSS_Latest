@@ -39,7 +39,18 @@ const AdminEvents = () => {
   };
 
   const viewSubmissionFile = (file) => {
-    setPreviewFile(file);
+    // For PDFs from Cloudinary, use Google Docs Viewer for better rendering
+    let viewableFile = { ...file };
+    
+    if (file.url && (file.url.toLowerCase().includes('.pdf') || file.fileType === 'application/pdf')) {
+      // Use Google Docs Viewer for PDF preview
+      const cloudinaryUrl = file.url;
+      viewableFile.viewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(cloudinaryUrl)}&embedded=true`;
+    } else {
+      viewableFile.viewUrl = file.url;
+    }
+    
+    setPreviewFile(viewableFile);
   };
 
   const closePreview = () => {
@@ -272,29 +283,14 @@ const AdminEvents = () => {
               </div>
             </div>
             <div className="flex-1 p-4 overflow-hidden">
-              {previewFile.url.toLowerCase().endsWith('.pdf') || previewFile.url.includes('.pdf') ? (
-                <object
-                  data={previewFile.url}
-                  type="application/pdf"
-                  className="w-full h-full rounded"
-                >
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <p className="mb-4">PDF preview not available in this browser.</p>
-                    <button
-                      onClick={() => window.open(previewFile.url, '_blank')}
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-                    >
-                      Open in New Tab
-                    </button>
-                  </div>
-                </object>
-              ) : (
-                <iframe
-                  src={previewFile.url}
-                  className="w-full h-full border-0 rounded"
-                  title="File Preview"
-                />
-              )}
+              <iframe
+                src={previewFile.viewUrl || previewFile.url}
+                className="w-full h-full border-0 rounded"
+                title="File Preview"
+                onError={() => {
+                  console.error('Preview failed for:', previewFile.url);
+                }}
+              />
             </div>
           </div>
         </div>
