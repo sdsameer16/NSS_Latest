@@ -457,10 +457,9 @@ router.post('/student/submit', [auth, authorize('student'), upload.array('files'
           .replace(/(^-|-$)+/g, '')
           .slice(0, 60) || 'upload';
 
-        // Include extension in public_id so Cloudinary URL ends with .pdf/.docx etc.
-        const publicId = originalExt
-          ? `${Date.now()}-${safeBaseName}.${originalExt}`
-          : `${Date.now()}-${safeBaseName}`;
+        // Don't include extension in public_id when using resource_type: 'auto'
+        // Cloudinary will add it automatically based on the file type
+        const publicId = `${Date.now()}-${safeBaseName}`;
 
         const result = await cloudinary.uploader.upload(dataURI, {
           folder: `nss-reports/${eventId}`,
