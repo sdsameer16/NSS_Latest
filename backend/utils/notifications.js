@@ -216,7 +216,7 @@ const sendNewEventNotification = async (event, students) => {
           <li>Registration Deadline: ${new Date(event.registrationDeadline).toLocaleDateString()}</li>
         </ul>
       </div>
-      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/student/events" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Event</a></p>
+      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View Event</a></p>
     </div>
   `;
 
