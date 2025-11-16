@@ -114,7 +114,7 @@ const sendApprovalNotification = async (user, event) => {
         </ul>
       </div>
       <p>Please make sure to attend the event.</p>
-      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/student/profile" style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View My Profile</a></p>
+      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" style="background-color: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View My Profile</a></p>
     </div>
   `;
 
