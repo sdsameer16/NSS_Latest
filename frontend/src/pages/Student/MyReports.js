@@ -17,6 +17,7 @@ const MyReports = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   useEffect(() => {
     fetchReports();
@@ -57,6 +58,102 @@ const MyReports = () => {
       default:
         return 'bg-yellow-100 text-yellow-800';
     }
+  };
+
+  const downloadFileAttachment = async (file) => {
+    try {
+      toast.loading('Downloading file...', { id: 'file-download' });
+      
+      const response = await fetch(file.url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from URL or use provided filename
+      let filename = file.fileName;
+      if (!filename) {
+        const urlParts = file.url.split('/');
+        filename = urlParts[urlParts.length - 1].split('?')[0] || `download-${Date.now()}`;
+      }
+      
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success('File downloaded successfully', { id: 'file-download' });
+    } catch (error) {
+      console.error('File download error:', error);
+      toast.error('Failed to download file. Opening in new tab...', { id: 'file-download' });
+      // Fallback: open in new tab if download flow fails
+      window.open(file.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const viewFileAttachment = (file) => {
+    // Direct viewing approach based on file type
+    let viewableFile = { ...file };
+
+    if (file.url) {
+      const lowerUrl = file.url.toLowerCase();
+      const fileType = file.fileType?.toLowerCase() || '';
+      
+      // Fix Cloudinary URLs that have /image/upload/ for PDFs (wrong resource type)
+      let fixedUrl = file.url;
+      if ((lowerUrl.includes('.pdf') || fileType.includes('pdf')) && lowerUrl.includes('/image/upload/')) {
+        // Convert /image/upload/ to /raw/upload/ for PDFs
+        fixedUrl = file.url.replace('/image/upload/', '/raw/upload/');
+        console.log('Fixed PDF URL:', fixedUrl);
+      }
+      
+      // For PDFs, use direct Cloudinary URL - browsers can render PDFs natively
+      if (lowerUrl.includes('.pdf') || fileType.includes('pdf')) {
+        viewableFile.viewUrl = fixedUrl;
+        viewableFile.url = fixedUrl; // Update the url for download too
+        viewableFile.canPreview = true;
+      }
+      // For images, use direct URL
+      else if (lowerUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) || fileType.includes('image')) {
+        viewableFile.viewUrl = fixedUrl;
+        viewableFile.canPreview = true;
+      }
+      // For Office docs (DOCX, XLSX, PPTX), use Google Docs Viewer as fallback
+      else if (lowerUrl.match(/\.(docx?|xlsx?|pptx?)$/i) || fileType.includes('wordprocessingml') || fileType.includes('spreadsheetml') || fileType.includes('presentationml')) {
+        viewableFile.viewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fixedUrl)}&embedded=true`;
+        viewableFile.canPreview = true;
+      }
+      // For other file types, don't preview - just download
+      else {
+        viewableFile.viewUrl = null;
+        viewableFile.canPreview = false;
+      }
+    } else {
+      viewableFile.viewUrl = null;
+      viewableFile.canPreview = false;
+    }
+
+    // If can't preview, just download
+    if (!viewableFile.canPreview) {
+      downloadFileAttachment(file);
+      return;
+    }
+
+    setPreviewFile(viewableFile);
+  };
+
+  const closePreview = () => {
+    setPreviewFile(null);
   };
 
   if (loading) {
@@ -106,7 +203,7 @@ const MyReports = () => {
                   </h3>
                   <p className="text-sm text-gray-600 flex items-center gap-1">
                     <CalendarIcon className="h-4 w-4" />
-                    {report.event.title}
+                    {report.event?.title || 'Event Deleted'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -151,6 +248,46 @@ const MyReports = () => {
         </div>
       )}
 
+      {/* File Preview Modal */}
+      {previewFile && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b px-6 py-4">
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-gray-900">File Preview</h2>
+                <p className="text-sm text-gray-600">{previewFile.fileName}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => downloadFileAttachment(previewFile)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                >
+                  <CloudArrowDownIcon className="h-5 w-5" />
+                  Download
+                </button>
+                <button
+                  onClick={closePreview}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <XCircleIcon className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 p-4 overflow-hidden">
+              <iframe
+                src={previewFile.viewUrl || previewFile.url}
+                className="w-full h-full border-0 rounded"
+                title="File Preview"
+                onError={() => {
+                  console.error('Preview failed for:', previewFile.url);
+                  toast.error('Preview unavailable. Please download the file.');
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Report Detail Modal */}
       {selectedReport && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -167,15 +304,27 @@ const MyReports = () => {
 
             <div className="p-6 space-y-6">
               {/* Event Info */}
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">{selectedReport.event.title}</h3>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p><strong>Date:</strong> {new Date(selectedReport.event.startDate).toLocaleDateString()} - {new Date(selectedReport.event.endDate).toLocaleDateString()}</p>
-                  <p><strong>Location:</strong> {selectedReport.event.location}</p>
-                  <p><strong>Submitted:</strong> {new Date(selectedReport.createdAt).toLocaleString()}</p>
-                  <p><strong>Academic Year:</strong> {selectedReport.academicYear}</p>
+              {selectedReport.event ? (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-2">{selectedReport.event.title}</h3>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p><strong>Date:</strong> {new Date(selectedReport.event.startDate).toLocaleDateString()} - {new Date(selectedReport.event.endDate).toLocaleDateString()}</p>
+                    <p><strong>Location:</strong> {selectedReport.event.location}</p>
+                    <p><strong>Submitted:</strong> {new Date(selectedReport.createdAt).toLocaleString()}</p>
+                    <p><strong>Academic Year:</strong> {selectedReport.academicYear}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ The event associated with this report has been deleted.
+                  </p>
+                  <div className="text-sm text-gray-600 space-y-1 mt-2">
+                    <p><strong>Submitted:</strong> {new Date(selectedReport.createdAt).toLocaleString()}</p>
+                    <p><strong>Academic Year:</strong> {selectedReport.academicYear}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Status */}
               <div className="flex items-center gap-3">
@@ -256,17 +405,34 @@ const MyReports = () => {
                   <h3 className="font-semibold text-gray-900 mb-2">Attached Files</h3>
                   <div className="space-y-2">
                     {selectedReport.files.map((file, idx) => (
-                      <a
+                      <div
                         key={idx}
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-gray-50 px-4 py-3 rounded-lg hover:bg-gray-100"
                       >
                         <DocumentTextIcon className="h-5 w-5 text-gray-400" />
-                        <span className="flex-1 text-sm text-gray-700">{file.fileName}</span>
-                        <CloudArrowDownIcon className="h-5 w-5 text-blue-600" />
-                      </a>
+                        <span className="flex-1 text-sm text-gray-700">{file.fileName || `Attachment ${idx + 1}`}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            viewFileAttachment(file);
+                          }}
+                          className="px-3 py-1 text-xs font-medium rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            downloadFileAttachment(file);
+                          }}
+                          className="px-3 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+                        >
+                          <CloudArrowDownIcon className="h-4 w-4" />
+                          Download
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>

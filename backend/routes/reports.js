@@ -451,12 +451,27 @@ router.post('/student/submit', [auth, authorize('student'), upload.array('files'
 
         const publicId = `${Date.now()}-${safeBaseName}`;
 
+        // Determine resource_type based on file mimetype
+        let resourceType = 'auto';
+        if (file.mimetype.startsWith('image/')) {
+          resourceType = 'image';
+        } else if (file.mimetype.startsWith('video/')) {
+          resourceType = 'video';
+        } else {
+          // For PDFs, documents, and other files, use 'raw'
+          resourceType = 'raw';
+        }
+
         const result = await new Promise((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
               folder: `nss-reports/${eventId}`,
-              resource_type: 'auto',
-              public_id: publicId
+              resource_type: resourceType,
+              public_id: publicId,
+              // Add flags for better PDF handling
+              ...(file.mimetype === 'application/pdf' && {
+                flags: 'attachment'
+              })
             },
             (error, result) => {
               if (error) {

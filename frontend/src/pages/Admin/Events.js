@@ -39,17 +39,53 @@ const AdminEvents = () => {
   };
 
   const viewSubmissionFile = (file) => {
-    // For PDFs from Cloudinary, use Google Docs Viewer for better rendering
+    // Direct viewing approach based on file type
     let viewableFile = { ...file };
-    
-    if (file.url && (file.url.toLowerCase().includes('.pdf') || file.fileType === 'application/pdf')) {
-      // Use Google Docs Viewer for PDF preview
-      const cloudinaryUrl = file.url;
-      viewableFile.viewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(cloudinaryUrl)}&embedded=true`;
+
+    if (file.url) {
+      const lowerUrl = file.url.toLowerCase();
+      const fileType = file.fileType?.toLowerCase() || '';
+      
+      // Fix Cloudinary URLs that have /image/upload/ for PDFs (wrong resource type)
+      let fixedUrl = file.url;
+      if ((lowerUrl.includes('.pdf') || fileType.includes('pdf')) && lowerUrl.includes('/image/upload/')) {
+        // Convert /image/upload/ to /raw/upload/ for PDFs
+        fixedUrl = file.url.replace('/image/upload/', '/raw/upload/');
+        console.log('Fixed PDF URL:', fixedUrl);
+      }
+      
+      // For PDFs, use direct Cloudinary URL - browsers can render PDFs natively
+      if (lowerUrl.includes('.pdf') || fileType.includes('pdf')) {
+        viewableFile.viewUrl = fixedUrl;
+        viewableFile.url = fixedUrl; // Update the url for download too
+        viewableFile.canPreview = true;
+      }
+      // For images, use direct URL
+      else if (lowerUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) || fileType.includes('image')) {
+        viewableFile.viewUrl = fixedUrl;
+        viewableFile.canPreview = true;
+      }
+      // For Office docs (DOCX, XLSX, PPTX), use Google Docs Viewer as fallback
+      else if (lowerUrl.match(/\.(docx?|xlsx?|pptx?)$/i) || fileType.includes('wordprocessingml') || fileType.includes('spreadsheetml') || fileType.includes('presentationml')) {
+        viewableFile.viewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fixedUrl)}&embedded=true`;
+        viewableFile.canPreview = true;
+      }
+      // For other file types, don't preview - just download
+      else {
+        viewableFile.viewUrl = null;
+        viewableFile.canPreview = false;
+      }
     } else {
-      viewableFile.viewUrl = file.url;
+      viewableFile.viewUrl = null;
+      viewableFile.canPreview = false;
     }
-    
+
+    // If can't preview, just download
+    if (!viewableFile.canPreview) {
+      downloadSubmissionFile(file);
+      return;
+    }
+
     setPreviewFile(viewableFile);
   };
 
@@ -59,24 +95,42 @@ const AdminEvents = () => {
 
   const downloadSubmissionFile = async (file) => {
     try {
+      toast.loading('Downloading file...', { id: 'submission-download' });
+      
       const response = await fetch(file.url);
       if (!response.ok) {
-        throw new Error('Failed to fetch file');
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = file.fileName || 'submission-file';
+      
+      // Extract filename from URL or use provided filename
+      let filename = file.fileName;
+      if (!filename) {
+        const urlParts = file.url.split('/');
+        filename = urlParts[urlParts.length - 1].split('?')[0] || `submission-${Date.now()}`;
+      }
+      
+      link.download = filename;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success('File downloaded successfully', { id: 'submission-download' });
     } catch (error) {
       console.error('Submission file download error:', error);
+      toast.error('Failed to download file. Opening in new tab...', { id: 'submission-download' });
       // Fallback: open in new tab if download flow fails
-      window.open(file.url, '_blank');
+      window.open(file.url, '_blank', 'noopener,noreferrer');
     }
   };
 

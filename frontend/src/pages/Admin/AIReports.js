@@ -306,44 +306,91 @@ useEffect(() => {
 
   const downloadFileAttachment = async (file) => {
     try {
+      toast.loading('Downloading file...', { id: 'file-download' });
+      
       const response = await fetch(file.url);
       if (!response.ok) {
-        throw new Error('Failed to fetch file');
+        throw new Error(`Failed to fetch file: ${response.statusText}`);
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = file.fileName || 'report-file';
+      
+      // Extract filename from URL or use provided filename
+      let filename = file.fileName;
+      if (!filename) {
+        const urlParts = file.url.split('/');
+        filename = urlParts[urlParts.length - 1].split('?')[0] || `download-${Date.now()}`;
+      }
+      
+      link.download = filename;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+      
+      toast.success('File downloaded successfully', { id: 'file-download' });
     } catch (error) {
       console.error('File download error:', error);
+      toast.error('Failed to download file. Opening in new tab...', { id: 'file-download' });
       // Fallback: open in new tab if download flow fails
-      window.open(file.url, '_blank');
+      window.open(file.url, '_blank', 'noopener,noreferrer');
     }
   };
 
   const viewFileAttachment = (file) => {
-    // For PDFs and Office docs from Cloudinary, use Google Docs Viewer for better rendering
+    // Direct viewing approach based on file type
     let viewableFile = { ...file };
 
     if (file.url) {
       const lowerUrl = file.url.toLowerCase();
-      const docExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
-      const isDocLike = docExtensions.some(ext => lowerUrl.includes(ext));
-
-      if (isDocLike || file.fileType === 'application/pdf') {
-        const cloudinaryUrl = file.url;
-        viewableFile.viewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(cloudinaryUrl)}&embedded=true`;
-      } else {
-        viewableFile.viewUrl = file.url;
+      const fileType = file.fileType?.toLowerCase() || '';
+      
+      // Fix Cloudinary URLs that have /image/upload/ for PDFs (wrong resource type)
+      let fixedUrl = file.url;
+      if ((lowerUrl.includes('.pdf') || fileType.includes('pdf')) && lowerUrl.includes('/image/upload/')) {
+        // Convert /image/upload/ to /raw/upload/ for PDFs
+        fixedUrl = file.url.replace('/image/upload/', '/raw/upload/');
+        console.log('Fixed PDF URL:', fixedUrl);
+      }
+      
+      // For PDFs, use direct Cloudinary URL - browsers can render PDFs natively
+      if (lowerUrl.includes('.pdf') || fileType.includes('pdf')) {
+        viewableFile.viewUrl = fixedUrl;
+        viewableFile.url = fixedUrl; // Update the url for download too
+        viewableFile.canPreview = true;
+      }
+      // For images, use direct URL
+      else if (lowerUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) || fileType.includes('image')) {
+        viewableFile.viewUrl = fixedUrl;
+        viewableFile.canPreview = true;
+      }
+      // For Office docs (DOCX, XLSX, PPTX), use Google Docs Viewer as fallback
+      else if (lowerUrl.match(/\.(docx?|xlsx?|pptx?)$/i) || fileType.includes('wordprocessingml') || fileType.includes('spreadsheetml') || fileType.includes('presentationml')) {
+        viewableFile.viewUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(fixedUrl)}&embedded=true`;
+        viewableFile.canPreview = true;
+      }
+      // For other file types, don't preview - just download
+      else {
+        viewableFile.viewUrl = null;
+        viewableFile.canPreview = false;
       }
     } else {
-      viewableFile.viewUrl = file.url;
+      viewableFile.viewUrl = null;
+      viewableFile.canPreview = false;
+    }
+
+    // If can't preview, just download
+    if (!viewableFile.canPreview) {
+      downloadFileAttachment(file);
+      return;
     }
 
     setPreviewFile(viewableFile);
@@ -689,7 +736,7 @@ useEffect(() => {
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 mb-1">{report.title}</h3>
                     <p className="text-sm text-gray-600 mb-2">
-                      {report.student.name} • {report.event.title}
+                      {report.student?.name || 'Unknown Student'} • {report.event?.title || 'Event Deleted'}
                     </p>
                     {report.aiSummary && (
                       <div className="bg-purple-50 rounded p-2 mb-2">
@@ -780,19 +827,27 @@ useEffect(() => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4">
                   <h3 className="font-semibold mb-2">Student</h3>
-                  <p className="text-sm">{selectedReport.student.name}</p>
-                  <p className="text-xs text-gray-600">{selectedReport.student.email}</p>
-                  {selectedReport.student.studentId && (
+                  <p className="text-sm">{selectedReport.student?.name || 'Unknown Student'}</p>
+                  <p className="text-xs text-gray-600">{selectedReport.student?.email || 'N/A'}</p>
+                  {selectedReport.student?.studentId && (
                     <p className="text-xs text-gray-600">ID: {selectedReport.student.studentId}</p>
                   )}
                 </div>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h3 className="font-semibold mb-2">Event</h3>
-                  <p className="text-sm">{selectedReport.event.title}</p>
-                  <p className="text-xs text-gray-600">
-                    {new Date(selectedReport.event.startDate).toLocaleDateString()} - {new Date(selectedReport.event.endDate).toLocaleDateString()}
-                  </p>
-                </div>
+                {selectedReport.event ? (
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <h3 className="font-semibold mb-2">Event</h3>
+                    <p className="text-sm">{selectedReport.event.title}</p>
+                    <p className="text-xs text-gray-600">
+                      {new Date(selectedReport.event.startDate).toLocaleDateString()} - {new Date(selectedReport.event.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                    <h3 className="font-semibold mb-2">Event</h3>
+                    <p className="text-sm text-yellow-800">⚠️ Event Deleted</p>
+                    <p className="text-xs text-gray-600">The associated event has been removed</p>
+                  </div>
+                )}
               </div>
 
               {/* AI Analysis */}
