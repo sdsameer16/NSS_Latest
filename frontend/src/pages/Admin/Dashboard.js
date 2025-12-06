@@ -5,7 +5,9 @@ import {
   CalendarIcon,
   ClockIcon,
   CheckCircleIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  BellIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import VibrantPageLayout from '../../components/VibrantPageLayout';
 import anime from 'animejs/lib/anime.es.js';
@@ -13,6 +15,7 @@ import anime from 'animejs/lib/anime.es.js';
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showNotificationIframe, setShowNotificationIframe] = useState(false);
 
   useEffect(() => {
     fetchStats();
@@ -188,6 +191,58 @@ const AdminDashboard = () => {
         </div>
       </div>
       </div>
+
+      {/* Floating Notification Button */}
+      <button
+        onClick={() => setShowNotificationIframe(!showNotificationIframe)}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-110 transform transition-all duration-300 z-40 group"
+        title="Send Notifications"
+      >
+        {showNotificationIframe ? (
+          <XMarkIcon className="h-6 w-6" />
+        ) : (
+          <BellIcon className="h-6 w-6 animate-pulse" />
+        )}
+        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-bounce">
+          !
+        </span>
+      </button>
+
+      {/* Notification Iframe Modal */}
+      {showNotificationIframe && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div 
+            className="bg-white dark:bg-gray-800 w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl"
+            style={{ borderRadius: '8px' }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-3">
+                <BellIcon className="h-6 w-6 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Send Notifications
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowNotificationIframe(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
+              >
+                <XMarkIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Iframe */}
+            <div className="flex-1 overflow-hidden" style={{ borderRadius: '0 0 8px 8px' }}>
+              <iframe
+                src="https://nssvu.netlify.app/"
+                className="w-full h-full border-0"
+                title="NSS Notification Portal"
+                allow="clipboard-write"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </VibrantPageLayout>
   );
 };
