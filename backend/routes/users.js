@@ -47,6 +47,8 @@ router.get('/stats', [auth, authorize('admin', 'faculty')], async (req, res) => 
     const totalEvents = await (await require('../models/Event').find({})).length;
     const totalParticipations = await Participation.countDocuments({});
     const totalContributions = await Contribution.countDocuments({});
+    
+    // Calculate total volunteer hours from all students
     const totalVolunteerHours = await User.aggregate([
       { $match: { role: 'student' } },
       { $group: { _id: null, total: { $sum: '$totalVolunteerHours' } } }
@@ -56,7 +58,7 @@ router.get('/stats', [auth, authorize('admin', 'faculty')], async (req, res) => 
     const Problem = require('../models/Problem');
     const pendingProblems = await Problem.countDocuments({ status: 'pending' });
 
-    res.json({
+    const stats = {
       totalStudents,
       totalFaculty,
       totalEvents,
@@ -64,7 +66,10 @@ router.get('/stats', [auth, authorize('admin', 'faculty')], async (req, res) => 
       totalContributions,
       totalVolunteerHours: totalVolunteerHours[0]?.total || 0,
       pendingProblems
-    });
+    };
+
+    console.log('📊 Dashboard stats:', stats);
+    res.json(stats);
   } catch (error) {
     console.error('Get stats error:', error);
     res.status(500).json({ message: 'Server error' });

@@ -133,6 +133,7 @@ router.post('/login', [
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
+    console.log(`👤 User ${user.name} - Total Volunteer Hours: ${user.totalVolunteerHours || 0}`);
     res.json(user);
   } catch (error) {
     console.error('Get user error:', error);

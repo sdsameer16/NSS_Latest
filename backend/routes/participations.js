@@ -268,23 +268,87 @@ router.put('/:id/reject', [auth, authorize('admin', 'faculty')], async (req, res
 // @access  Private (Admin/Faculty only)
 router.put('/:id/attendance', [auth, authorize('admin', 'faculty')], async (req, res) => {
   try {
-    const { attended } = req.body;
+    const { attended, volunteerHours } = req.body;
+    console.log('\n🎯 === ATTENDANCE MARKING REQUEST ===');
+    console.log('Participation ID:', req.params.id);
+    console.log('Attended:', attended);
+    console.log('Volunteer Hours (from request):', volunteerHours);
 
-    const participation = await Participation.findById(req.params.id);
+    const participation = await Participation.findById(req.params.id)
+      .populate('event')
+      .populate('student', 'name email totalVolunteerHours');
 
     if (!participation) {
+      console.log('❌ Participation not found');
       return res.status(404).json({ message: 'Participation not found' });
     }
 
+    console.log('Student:', participation.student.name);
+    console.log('Current Student Hours:', participation.student.totalVolunteerHours);
+    console.log('Event:', participation.event.title);
+
+    const wasAttended = participation.attendance;
     participation.attendance = attended;
     participation.attendanceDate = attended ? new Date() : null;
     participation.status = attended ? 'attended' : participation.status;
 
-    await participation.save();
+    // Calculate volunteer hours if marking as attended
+    if (attended && !wasAttended) {
+      console.log('\n📊 Calculating volunteer hours...');
+      // Use provided hours or calculate from event duration
+      let hours = volunteerHours;
+      if (!hours && participation.event) {
+        // Calculate hours from event start and end date (in hours)
+        const startDate = new Date(participation.event.startDate);
+        const endDate = new Date(participation.event.endDate);
+        const durationInMs = endDate - startDate;
+        hours = Math.max(1, Math.round(durationInMs / (1000 * 60 * 60))); // Convert to hours, minimum 1 hour
+        console.log(`Calculated from event duration: ${hours} hours`);
+      }
+      participation.volunteerHours = hours || 1; // Default to 1 hour if not specified
+      console.log(`Final hours to add: ${participation.volunteerHours}`);
 
-    await participation.populate('student', 'name email studentId');
+      // Add hours to student's total
+      const student = await User.findById(participation.student._id || participation.student);
+      if (student) {
+        const oldTotal = student.totalVolunteerHours || 0;
+        student.totalVolunteerHours = oldTotal + participation.volunteerHours;
+        await student.save();
+        console.log(`✅ HOURS UPDATED!`);
+        console.log(`   Student: ${student.name}`);
+        console.log(`   Previous Total: ${oldTotal} hours`);
+        console.log(`   Added: ${participation.volunteerHours} hours`);
+        console.log(`   New Total: ${student.totalVolunteerHours} hours`);
+      } else {
+        console.log('❌ ERROR: Student not found!');
+      }
+    } else if (!attended && wasAttended) {
+      console.log('\n⚠️ Unmarking attendance - removing hours...');
+      // If unmarking attendance, subtract the hours
+      const student = await User.findById(participation.student._id || participation.student);
+      if (student && participation.volunteerHours) {
+        const oldTotal = student.totalVolunteerHours || 0;
+        student.totalVolunteerHours = Math.max(0, oldTotal - participation.volunteerHours);
+        await student.save();
+        console.log(`⚠️ HOURS REMOVED!`);
+        console.log(`   Student: ${student.name}`);
+        console.log(`   Previous Total: ${oldTotal} hours`);
+        console.log(`   Removed: ${participation.volunteerHours} hours`);
+        console.log(`   New Total: ${student.totalVolunteerHours} hours`);
+      }
+      participation.volunteerHours = 0;
+    } else {
+      console.log('ℹ️ No hours change needed (wasAttended:', wasAttended, ', attended:', attended, ')');
+    }
+
+    await participation.save();
+    console.log('✅ Participation saved');
+
+    await participation.populate('student', 'name email studentId totalVolunteerHours');
     await participation.populate('event', 'title eventType');
 
+    console.log('📤 Sending response with updated data');
+    console.log('=== END ATTENDANCE MARKING ===\n');
     res.json(participation);
   } catch (error) {
     console.error('Mark attendance error:', error);

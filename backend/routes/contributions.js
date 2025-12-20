@@ -104,9 +104,8 @@ router.post('/', [
     participation.volunteerHours = parseFloat(volunteerHours);
     await participation.save();
 
-    // Update user total volunteer hours
+    // Add contribution to user's contributions list (hours are added when attendance is marked)
     const user = await User.findById(req.user.id);
-    user.totalVolunteerHours += parseFloat(volunteerHours);
     user.contributions.push(contribution._id);
     await user.save();
 
