@@ -72,4 +72,25 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
+// Set active configuration (for backward compatibility)
+router.patch('/:id/set-active', auth, async (req, res) => {
+  try {
+    // For backward compatibility, just return the config as "active"
+    const activatedConfig = await PeriodConfig.findById(req.params.id);
+    
+    if (!activatedConfig) {
+      return res.status(404).json({ message: 'Period configuration not found' });
+    }
+    
+    // Set this config as active and deactivate others
+    await PeriodConfig.updateMany({}, { isActive: false });
+    await PeriodConfig.findByIdAndUpdate(req.params.id, { isActive: true });
+    
+    const updatedConfig = await PeriodConfig.findById(req.params.id);
+    res.json(updatedConfig);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to set active configuration' });
+  }
+});
+
 module.exports = router;
