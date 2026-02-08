@@ -23,15 +23,15 @@ router.get('/event/:eventId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Get all period configurations to find matching academic year
-    const allConfigs = await PeriodConfig.find().sort({ academicYear: -1 });
-    
-    // Find period config for the event's academic year
+    // Get period configuration based on event's academic year
     const eventYear = new Date(event.startDate).getFullYear();
     const academicYear = `${eventYear}-${eventYear + 1}`;
     
-    // Find the specific configuration for this academic year
-    const relevantConfig = allConfigs.find(config => config.academicYear === academicYear);
+    // Find period config for the event's academic year
+    const periodConfig = await PeriodConfig.findOne({ academicYear });
+    
+    // If no specific config found, try active config as fallback
+    const relevantConfig = periodConfig || await PeriodConfig.findOne({ isActive: true });
     
     // Filter approved participants only
     const approvedParticipants = event.participations.filter(
@@ -97,15 +97,15 @@ router.get('/event/:eventId/download', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Get all period configurations to find matching academic year
-    const allConfigs = await PeriodConfig.find().sort({ academicYear: -1 });
-    
-    // Find period config for the event's academic year
+    // Get period configuration based on event's academic year
     const eventYear = new Date(event.startDate).getFullYear();
     const academicYear = `${eventYear}-${eventYear + 1}`;
     
-    // Find the specific configuration for this academic year
-    const relevantConfig = allConfigs.find(config => config.academicYear === academicYear);
+    // Find period config for the event's academic year
+    const periodConfig = await PeriodConfig.findOne({ academicYear });
+    
+    // If no specific config found, try active config as fallback
+    const relevantConfig = periodConfig || await PeriodConfig.findOne({ isActive: true });
     
     // Filter approved participants only
     const approvedParticipants = event.participations.filter(
