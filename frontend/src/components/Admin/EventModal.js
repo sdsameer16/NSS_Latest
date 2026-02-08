@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 import { useForm } from 'react-hook-form';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, DocumentArrowDownIcon } from '@heroicons/react/24/outline';
 
 const EventModal = ({ event, onClose }) => {
   const { register, handleSubmit, formState: { errors }, setValue } = useForm();
@@ -43,6 +43,33 @@ const EventModal = ({ event, onClose }) => {
       toast.error(error.response?.data?.message || 'Failed to save event');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const downloadODList = async () => {
+    if (!event) {
+      toast.error('Event must be saved first before generating OD list');
+      return;
+    }
+
+    try {
+      const response = await api.get(`/od-list/event/${event._id}/download`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `OD_List_${event.title.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('OD list downloaded successfully');
+    } catch (error) {
+      toast.error('Failed to download OD list');
     }
   };
 
@@ -161,6 +188,16 @@ const EventModal = ({ event, onClose }) => {
           </div>
 
           <div className="flex justify-end space-x-3 pt-4">
+            {event && (
+              <button
+                type="button"
+                onClick={downloadODList}
+                className="px-4 py-2 border border-green-600 rounded-md shadow-sm text-sm font-medium text-green-600 bg-white hover:bg-green-50 flex items-center"
+              >
+                <DocumentArrowDownIcon className="h-4 w-4 mr-2" />
+                Download OD List
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

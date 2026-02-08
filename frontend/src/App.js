@@ -26,6 +26,7 @@ import MyReports from './pages/Student/MyReports';
 import ReportProblem from './pages/Student/ReportProblem';
 import MyProblemReports from './pages/Student/MyProblemReports';
 import ProblemDashboard from './pages/Admin/ProblemDashboard';
+import PeriodConfig from './pages/Admin/PeriodConfig';
 import Leaderboard from './pages/Leaderboard';
 import FacultyDashboard from './pages/Faculty/Dashboard';
 import theme from './theme';
@@ -115,6 +116,14 @@ function AppContent() {
               element={
                 <PrivateRoute roles={['admin', 'faculty']}>
                   <ProblemDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/admin/period-config"
+              element={
+                <PrivateRoute roles={['admin']}>
+                  <PeriodConfig />
                 </PrivateRoute>
               }
             />

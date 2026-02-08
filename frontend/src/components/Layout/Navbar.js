@@ -13,7 +13,8 @@ import {
   XMarkIcon,
   ExclamationTriangleIcon,
   TrophyIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
 const Navbar = () => {
@@ -103,6 +104,7 @@ const Navbar = () => {
         { path: '/admin/problems', label: 'Problems', icon: ExclamationTriangleIcon },
         { path: '/admin/participations', label: 'Participations', icon: UserIcon },
         { path: '/admin/reports', label: 'Reports', icon: ChartBarIcon },
+        { path: '/admin/period-config', label: 'Period Config', icon: ClockIcon },
         { path: '/leaderboard', label: 'Leaderboard', icon: TrophyIcon },
       ];
     } else if (user?.role === 'faculty') {
