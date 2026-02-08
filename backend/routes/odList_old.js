@@ -23,15 +23,8 @@ router.get('/event/:eventId', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Get period configuration based on event's academic year
-    const eventYear = new Date(event.startDate).getFullYear();
-    const academicYear = `${eventYear}-${eventYear + 1}`;
-    
-    // Find period config for the event's academic year
-    const periodConfig = await PeriodConfig.findOne({ academicYear });
-    
-    // If no specific config found, try active config as fallback
-    const relevantConfig = periodConfig || await PeriodConfig.findOne({ isActive: true });
+    // Get active period configuration
+    const periodConfig = await PeriodConfig.findOne({ isActive: true });
     
     // Filter approved participants only
     const approvedParticipants = event.participations.filter(
@@ -45,8 +38,8 @@ router.get('/event/:eventId', auth, async (req, res) => {
       
       // Get matching periods for this student's year
       let matchingPeriods = [];
-      if (relevantConfig && student.year) {
-        const yearPeriods = relevantConfig.periods[student.year] || [];
+      if (periodConfig && student.year) {
+        const yearPeriods = periodConfig.periods[student.year] || [];
         matchingPeriods = getMatchingPeriods(yearPeriods, eventStartTime, eventEndTime);
       }
 
@@ -97,15 +90,8 @@ router.get('/event/:eventId/download', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Get period configuration based on event's academic year
-    const eventYear = new Date(event.startDate).getFullYear();
-    const academicYear = `${eventYear}-${eventYear + 1}`;
-    
-    // Find period config for the event's academic year
-    const periodConfig = await PeriodConfig.findOne({ academicYear });
-    
-    // If no specific config found, try active config as fallback
-    const relevantConfig = periodConfig || await PeriodConfig.findOne({ isActive: true });
+    // Get active period configuration
+    const periodConfig = await PeriodConfig.findOne({ isActive: true });
     
     // Filter approved participants only
     const approvedParticipants = event.participations.filter(
@@ -142,8 +128,8 @@ router.get('/event/:eventId/download', auth, async (req, res) => {
       
       // Get matching periods for this student's year
       let matchingPeriods = [];
-      if (relevantConfig && student.year) {
-        const yearPeriods = relevantConfig.periods[student.year] || [];
+      if (periodConfig && student.year) {
+        const yearPeriods = periodConfig.periods[student.year] || [];
         matchingPeriods = getMatchingPeriods(yearPeriods, eventStartTime, eventEndTime);
       }
 

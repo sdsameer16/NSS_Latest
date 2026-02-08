@@ -77,10 +77,6 @@ const periodConfigSchema = new mongoose.Schema({
         required: true
       }
     }]
-  },
-  isActive: {
-    type: Boolean,
-    default: true
   }
 }, {
   timestamps: true

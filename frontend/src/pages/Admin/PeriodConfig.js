@@ -5,7 +5,6 @@ import { PlusIcon, PencilIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/
 
 const PeriodConfig = () => {
   const [configs, setConfigs] = useState([]);
-  const [activeConfig, setActiveConfig] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState(null);
@@ -26,12 +25,8 @@ const PeriodConfig = () => {
 
   const fetchConfigs = async () => {
     try {
-      const [configsRes, activeRes] = await Promise.all([
-        api.get('/period-config'),
-        api.get('/period-config/active')
-      ]);
+      const configsRes = await api.get('/period-config');
       setConfigs(configsRes.data);
-      setActiveConfig(activeRes.data);
     } catch (error) {
       toast.error('Failed to fetch period configurations');
     } finally {
@@ -145,16 +140,6 @@ const PeriodConfig = () => {
     }
   };
 
-  const setActive = async (configId) => {
-    try {
-      await api.patch(`/period-config/${configId}/set-active`);
-      toast.success('Active configuration updated successfully');
-      fetchConfigs();
-    } catch (error) {
-      toast.error('Failed to update active configuration');
-    }
-  };
-
   const updatePeriod = (year, index, field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -209,25 +194,10 @@ const PeriodConfig = () => {
         </button>
       </div>
 
-      {/* Active Configuration Display */}
-      {activeConfig && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-green-800">
-                Active Configuration: {activeConfig.academicYear}
-              </h3>
-              <p className="text-green-600">This configuration is currently being used for OD calculations</p>
-            </div>
-            <CheckIcon className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-      )}
-
       {/* Configurations List */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-medium text-gray-900">All Configurations</h2>
+          <h2 className="text-lg font-medium text-gray-900">Academic Year Configurations</h2>
         </div>
         <div className="divide-y divide-gray-200">
           {configs.map((config) => (
@@ -242,14 +212,6 @@ const PeriodConfig = () => {
                   </p>
                 </div>
                 <div className="flex space-x-2">
-                  {!config.isActive && (
-                    <button
-                      onClick={() => setActive(config._id)}
-                      className="text-green-600 hover:text-green-800 px-3 py-1 text-sm"
-                    >
-                      Set Active
-                    </button>
-                  )}
                   <button
                     onClick={() => openModal(config)}
                     className="text-indigo-600 hover:text-indigo-800 px-3 py-1 text-sm"
