@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PeriodConfig = require('../models/PeriodConfig');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 // Get current active period configuration
 router.get('/active', auth, async (req, res) => {

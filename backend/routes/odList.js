@@ -4,7 +4,7 @@ const Event = require('../models/Event');
 const Participation = require('../models/Participation');
 const User = require('../models/User');
 const PeriodConfig = require('../models/PeriodConfig');
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const XLSX = require('xlsx');
 
 // Get OD list for an event
