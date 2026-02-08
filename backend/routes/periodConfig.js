@@ -3,6 +3,17 @@ const router = express.Router();
 const PeriodConfig = require('../models/PeriodConfig');
 const { auth } = require('../middleware/auth');
 
+// Get current active period configuration (for backward compatibility)
+router.get('/active', auth, async (req, res) => {
+  try {
+    // Return the most recent configuration as "active"
+    const activeConfig = await PeriodConfig.findOne().sort({ createdAt: -1 });
+    res.json(activeConfig);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch period configuration' });
+  }
+});
+
 // Get period configuration by academic year
 router.get('/academic-year/:year', auth, async (req, res) => {
   try {
