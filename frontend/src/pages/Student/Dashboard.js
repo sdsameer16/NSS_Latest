@@ -221,7 +221,7 @@ const StudentDashboard = () => {
     >
       <div className="space-y-6">
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      {/* <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -246,7 +246,7 @@ const StudentDashboard = () => {
             </div>
           );
         })}
-      </div>
+      </div> */}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="bg-white shadow-soft rounded-2xl p-6 border border-gray-100/50 hover:shadow-lg transition-shadow duration-300">
