@@ -120,12 +120,18 @@ export const SocketProvider = ({ children }) => {
         // Refresh stored notifications
         fetchStoredNotifications();
         
+        // Show toast with option to refresh events
         toast.success(data.message || 'New event available!', {
           duration: 5000,
           onClick: () => {
             window.location.href = '/student/events';
           }
         });
+        
+        // Auto-refresh events list after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
       });
 
       // Listen for participation approval notifications
@@ -277,9 +283,20 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  const clearNotifications = () => {
-    setNotifications([]);
-    setUnreadCount(0);
+  const clearNotifications = async () => {
+    try {
+      // Clear from backend
+      await api.delete('/notifications-api/clear');
+      
+      // Clear from local state
+      setNotifications([]);
+      setUnreadCount(0);
+      
+      toast.success('All notifications cleared!');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      toast.error('Failed to clear notifications');
+    }
   };
 
   return (

@@ -654,6 +654,7 @@ async function notifyAllStudentsAboutEvent(event, problem, req) {
           user: student._id,
           type: 'new-event',
           message: `New event: ${event.title}`,
+          event: event._id, // Add event reference for auto-cleanup
           data: {
             eventId: event._id.toString(),
             eventTitle: event.title,

@@ -1,6 +1,7 @@
 const express = require('express');
 const Participation = require('../models/Participation');
 const Event = require('../models/Event');
+const Notification = require('../models/Notification');
 const { sendEventReminder } = require('../utils/notifications');
 const { auth, authorize } = require('../middleware/auth');
 
@@ -95,6 +96,25 @@ router.post('/send-reminder', [auth, authorize('admin', 'faculty')], async (req,
     });
   } catch (error) {
     console.error('Send reminder error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/notifications-api/clear
+// @desc    Clear all notifications for current user
+// @access  Private
+router.delete('/clear', auth, async (req, res) => {
+  try {
+    await Notification.deleteMany({ user: req.user.id });
+    
+    console.log(`🗑️ Cleared all notifications for user: ${req.user.email}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'All notifications cleared successfully' 
+    });
+  } catch (error) {
+    console.error('Clear notifications error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

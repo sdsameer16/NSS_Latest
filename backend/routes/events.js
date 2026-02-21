@@ -159,6 +159,34 @@ router.post('/', [
       }
     }
 
+    // Store notifications in database for offline students
+    try {
+      const Notification = require('../models/Notification');
+      const notificationPromises = students.map(student => {
+        return Notification.create({
+          user: student._id,
+          type: 'new-event',
+          message: `New event: ${event.title}`,
+          event: event._id, // Add event reference for auto-cleanup
+          data: {
+            eventId: event._id.toString(),
+            eventTitle: event.title,
+            eventType: event.eventType,
+            location: event.location,
+            startDate: event.startDate
+          },
+          read: false
+        }).catch(err => {
+          console.error(`Failed to store notification for ${student.name}:`, err.message);
+        });
+      });
+      
+      await Promise.allSettled(notificationPromises);
+      console.log(`✅ Stored ${students.length} notifications in database`);
+    } catch (error) {
+      console.error('Error storing notifications:', error);
+    }
+
     res.status(201).json(event);
   } catch (error) {
     console.error('Create event error:', error);

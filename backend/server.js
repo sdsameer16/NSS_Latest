@@ -105,6 +105,18 @@ io.on('connection', (socket) => {
 const { initializeCertificateScheduler } = require('./utils/certificateScheduler');
 initializeCertificateScheduler(io);
 
+// Initialize notification cleanup scheduler
+const Notification = require('./models/Notification');
+const cron = require('node-cron');
+
+// Run notification cleanup every hour
+cron.schedule('0 * * * *', async () => {
+  console.log('🧹 Running notification cleanup job...');
+  await Notification.cleanupExpiredEventNotifications();
+});
+
+console.log('✅ Notification cleanup scheduler initialized (runs every hour)');
+
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
