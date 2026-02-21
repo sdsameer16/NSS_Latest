@@ -10,7 +10,7 @@ const User = require('../models/User');
 
 const PeriodConfig = require('../models/PeriodConfig');
 
-const auth = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 
 const XLSX = require('xlsx');
 

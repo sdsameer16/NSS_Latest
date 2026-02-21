@@ -2,7 +2,7 @@ const Problem = require('../models/Problem');
 const User = require('../models/User');
 const Event = require('../models/Event');
 const Notification = require('../models/Notification');
-const { sendEmail } = require('../utils/notifications');
+const { sendEmail, sendNewEventNotification } = require('../utils/notifications');
 
 // Points configuration
 const POINTS_CONFIG = {
@@ -605,49 +605,17 @@ async function notifyAllStudentsAboutEvent(event, problem, req) {
       return;
     }
 
-    // Send email to all students (in batches to avoid overwhelming the email service)
-    const batchSize = 50;
-    for (let i = 0; i < students.length; i += batchSize) {
-      const batch = students.slice(i, i + batchSize);
-      
-      await Promise.all(batch.map(student => {
-        const emailSubject = '🚨 New Community Problem - Help Needed!';
-        const emailHtml = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #2563eb;">New Community Service Opportunity!</h2>
-              <p>Dear ${student.name},</p>
-              <p>A new community problem has been reported and needs your help!</p>
-              
-              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin-top: 0;">Problem Details:</h3>
-                <p><strong>Title:</strong> ${problem.title}</p>
-                <p><strong>Category:</strong> ${problem.category}</p>
-                <p><strong>Location:</strong> ${problem.location.address}</p>
-                <p><strong>Severity:</strong> ${problem.severity.toUpperCase()}</p>
-              </div>
-
-              <div style="background: #dcfce7; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="margin-top: 0; color: #166534;">📅 Event Details:</h3>
-                <p><strong>Event:</strong> ${event.title}</p>
-                <p><strong>Date:</strong> ${new Date(event.startDate).toLocaleDateString()}</p>
-                <p><strong>Location:</strong> ${event.location}</p>
-              </div>
-
-              <p>Register now and be part of the solution!</p>
-              
-              <a href="${process.env.FRONTEND_URL}/events/${event._id}" 
-                 style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
-                Register for Event
-              </a>
-            </div>
-          `;
-        
-        return sendEmail(student.email, emailSubject, '', emailHtml)
-          .catch(err => console.error(`Failed to send email to ${student.email}:`, err));
-      }));
-    }
-
-    console.log('✅ Email notifications sent');
+    // Send email to all students using Brevo
+    console.log('📧 Using Brevo to send event notifications...');
+    const emailResults = await sendNewEventNotification(event, students);
+    
+    // Log email results
+    const successCount = emailResults.filter(r => r.success).length;
+    const failCount = emailResults.filter(r => !r.success).length;
+    console.log(`📊 Email notification summary:`);
+    console.log(`   ✅ Successful: ${successCount}`);
+    console.log(`   ❌ Failed: ${failCount}`);
+    console.log(`   📧 Total attempted: ${students.length}`);
 
     // Send WebSocket notifications to all students
     const io = req.app.get('io');

@@ -265,12 +265,108 @@ const sendNewEventNotification = async (event, students) => {
   return results;
 };
 
+// Generate OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+// Send OTP for password reset
+const sendPasswordResetOTP = async (user, otp) => {
+  console.log(`📧 Sending password reset OTP to ${user.email}`);
+  
+  if (!user.email) {
+    console.warn(`⚠️ User ${user.name} has no email address, skipping OTP email`);
+    return { success: false, error: 'No email address' };
+  }
+
+  const subject = `🔐 NSS Portal - Password Reset OTP`;
+  const text = `Dear ${user.name},\n\nYou requested to reset your password for the NSS Portal.\n\nYour OTP code is: ${otp}\n\nThis OTP will expire in 10 minutes.\n\nIf you didn't request this, please contact the administrator immediately.\n\nBest regards,\nNSS Portal Team`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #0ea5e9;">🔐 Password Reset Request</h2>
+      <p>Dear ${user.name},</p>
+      <p>You requested to reset your password for the NSS Portal.</p>
+      
+      <div style="background-color: #f3f4f6; padding: 30px; border-radius: 8px; margin: 20px 0; text-align: center; border-left: 4px solid #0ea5e9;">
+        <h3 style="color: #1f2937; margin-bottom: 15px;">Your OTP Code:</h3>
+        <div style="background-color: #1f2937; color: white; padding: 15px 25px; border-radius: 8px; font-size: 32px; font-weight: bold; letter-spacing: 5px; display: inline-block;">
+          ${otp}
+        </div>
+        <p style="margin-top: 15px; color: #6b7280; font-size: 14px;">This OTP will expire in 10 minutes</p>
+      </div>
+      
+      <div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+        <p style="margin: 0; color: #92400e;"><strong>⚠️ Security Notice:</strong> Never share this OTP with anyone.</p>
+      </div>
+      
+      <p>If you didn't request this, please contact the administrator immediately.</p>
+      
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+      <p style="color: #6b7280; font-size: 14px;">Best regards,<br>NSS Portal Team</p>
+    </div>
+  `;
+
+  const result = await sendEmail(user.email, subject, text, html);
+  if (result.success) {
+    console.log(`✅ Password reset OTP sent successfully to ${user.email}`);
+  }
+  return result;
+};
+
+// Send password to user via email
+const sendPasswordEmail = async (user, password) => {
+  console.log(`📧 Sending password email to ${user.email}`);
+  
+  if (!user.email) {
+    console.warn(`⚠️ User ${user.name} has no email address, skipping password email`);
+    return { success: false, error: 'No email address' };
+  }
+
+  const subject = `Your NSS Portal Password`;
+  const text = `Dear ${user.name},\n\nYou requested to receive your password for the NSS Portal.\n\nYour login credentials:\n- Email: ${user.email}\n- Password: ${password}\n\nPlease keep your password secure and do not share it with anyone.\n\nIf you didn't request this, please contact the administrator immediately.\n\nBest regards,\nNSS Portal Team`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #0ea5e9;">Your NSS Portal Password</h2>
+      <p>Dear ${user.name},</p>
+      <p>You requested to receive your password for the NSS Portal.</p>
+      
+      <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+        <h3 style="color: #1f2937; margin-bottom: 15px;">Your Login Credentials:</h3>
+        <p style="margin: 8px 0;"><strong>Email:</strong> ${user.email}</p>
+        <p style="margin: 8px 0;"><strong>Password:</strong> <span style="background-color: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 16px;">${password}</span></p>
+      </div>
+      
+      <div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+        <p style="margin: 0; color: #92400e;"><strong>⚠️ Security Notice:</strong> Please keep your password secure and do not share it with anyone.</p>
+      </div>
+      
+      <p>If you didn't request this, please contact the administrator immediately.</p>
+      
+      <p><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" style="background-color: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Login to NSS Portal</a></p>
+      
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+      <p style="color: #6b7280; font-size: 14px;">Best regards,<br>NSS Portal Team</p>
+    </div>
+  `;
+
+  const result = await sendEmail(user.email, subject, text, html);
+  if (result.success) {
+    console.log(`✅ Password email sent successfully to ${user.email}`);
+  }
+  return result;
+};
+
 module.exports = {
   sendEmail,
   sendRegistrationConfirmation,
   sendApprovalNotification,
   sendEventReminder,
   sendContributionVerified,
-  sendNewEventNotification
+  sendNewEventNotification,
+  sendPasswordEmail,
+  generateOTP,
+  sendPasswordResetOTP
 };
 
