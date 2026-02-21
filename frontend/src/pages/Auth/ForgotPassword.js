@@ -11,12 +11,12 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // Step 1: Email, Step 2: OTP & New Password
   const [email, setEmail] = useState('');
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '', '', '']);
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
   const [otpSent, setOtpSent] = useState(false);
   const formRef = useRef(null);
   const logoRef = useRef(null);
-  const otpInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
+  const otpInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
   const timerRef = useRef(null);
 
   useEffect(() => {
