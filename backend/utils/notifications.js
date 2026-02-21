@@ -267,7 +267,9 @@ const sendNewEventNotification = async (event, students) => {
 
 // Generate OTP
 const generateOTP = () => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Ensure exactly 6 digits (in case of any floating point issues)
+  return otp.padStart(6, '0');
 };
 
 // Send OTP for password reset

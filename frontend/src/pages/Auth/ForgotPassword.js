@@ -7,12 +7,17 @@ import anime from 'animejs/lib/anime.es.js';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors }, getValues } = useForm();
+  const { register, handleSubmit, formState: { errors }, getValues, setFocus, setValue } = useForm();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // Step 1: Email, Step 2: OTP & New Password
   const [email, setEmail] = useState('');
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '', '', '']);
+  const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
+  const [otpSent, setOtpSent] = useState(false);
   const formRef = useRef(null);
   const logoRef = useRef(null);
+  const otpInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
+  const timerRef = useRef(null);
 
   useEffect(() => {
     // Animate form on mount
@@ -35,6 +40,68 @@ const ForgotPassword = () => {
     });
   }, []);
 
+  // Auto-focus first OTP box when step changes to 2
+  useEffect(() => {
+    if (step === 2 && otpInputRefs[0].current) {
+      // Small delay to ensure the field is rendered
+      setTimeout(() => {
+        otpInputRefs[0].current.focus();
+      }, 100);
+    }
+  }, [step]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (otpSent && timeLeft > 0) {
+      timerRef.current = setTimeout(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      toast.error('OTP has expired! Please request a new one.');
+      setStep(1);
+      setOtpSent(false);
+      setTimeLeft(600);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [otpSent, timeLeft]);
+
+  // Handle OTP digit input
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) return; // Only allow single digit
+    
+    const newOtpDigits = [...otpDigits];
+    newOtpDigits[index] = value;
+    setOtpDigits(newOtpDigits);
+
+    // Auto-focus next box
+    if (value && index < 5) {
+      otpInputRefs[index + 1].current?.focus();
+    }
+
+    // Set the complete OTP value for form validation
+    const completeOtp = newOtpDigits.join('');
+    setValue('otp', completeOtp);
+  };
+
+  // Handle backspace key
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs[index - 1].current?.focus();
+    }
+  };
+
+  // Format time display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const onSubmitEmail = async (data) => {
     setLoading(true);
     try {
@@ -43,6 +110,9 @@ const ForgotPassword = () => {
       if (response.data.success) {
         setEmail(data.email);
         setStep(2);
+        setOtpSent(true);
+        setTimeLeft(600); // Reset timer to 10 minutes
+        setOtpDigits(['', '', '', '', '', '', '']); // Clear OTP digits
         toast.success('OTP has been sent to your email!');
       } else {
         toast.error(response.data.message || 'Something went wrong');
@@ -176,10 +246,49 @@ const ForgotPassword = () => {
           <form className="mt-4 sm:mt-6 space-y-4 sm:space-y-5" onSubmit={handleSubmit(onSubmitOTP)}>
             <div className="space-y-3 sm:space-y-4">
               <div>
-                <label htmlFor="otp" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  OTP Code
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Email address
                 </label>
                 <input
+                  type="email"
+                  value={email}
+                  readOnly
+                  className="appearance-none relative block w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-white/50 bg-gray-100 rounded-lg sm:rounded-xl text-sm sm:text-base text-gray-600 focus:outline-none transition-all duration-300 shadow-sm"
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1 ml-1">Email is pre-filled from previous step</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                    OTP Code
+                  </label>
+                  <div className="text-sm font-semibold text-red-600">
+                    {timeLeft > 0 ? `Expires in ${formatTime(timeLeft)}` : 'OTP Expired!'}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2 justify-center mb-4">
+                  {otpDigits.map((digit, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(index, e)}
+                      ref={otpInputRefs[index]}
+                      className="w-12 h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none transition-colors duration-200"
+                      placeholder="-"
+                      disabled={loading || timeLeft === 0}
+                    />
+                  ))}
+                </div>
+                
+                {/* Hidden input for form validation */}
+                <input
+                  type="hidden"
                   {...register('otp', { 
                     required: 'OTP is required', 
                     pattern: { 
@@ -187,11 +296,6 @@ const ForgotPassword = () => {
                       message: 'OTP must be 6 digits' 
                     } 
                   })}
-                  type="text"
-                  maxLength={6}
-                  className="appearance-none relative block w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-white/50 bg-white rounded-lg sm:rounded-xl placeholder-gray-400 text-sm sm:text-base text-gray-900 focus:outline-none focus:ring-2 sm:focus:ring-4 focus:ring-blue-400/30 focus:border-blue-400 hover:border-white/70 transition-all duration-300 shadow-sm text-center text-lg font-mono"
-                  placeholder="Enter 6-digit OTP"
-                  disabled={loading}
                 />
                 {errors.otp && <p className="text-red-500 text-xs mt-1 ml-1">{errors.otp.message}</p>}
               </div>
@@ -265,7 +369,7 @@ const ForgotPassword = () => {
         
         <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
           <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
-            <strong>Note:</strong> {step === 1 ? 'OTP will be sent to your registered email address and expires in 10 minutes.' : 'Make sure to enter the correct OTP and matching passwords.'}
+            <strong>Note:</strong> {step === 1 ? 'OTP will be sent to your registered email address and expires in 10 minutes.' : 'Enter OTP before it expires. OTP will be automatically deleted from database after 10 minutes.'}
           </p>
         </div>
       </div>
