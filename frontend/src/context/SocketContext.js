@@ -70,16 +70,32 @@ export const SocketProvider = ({ children }) => {
       console.log('   User Role:', user.role);
       
       // Connect to Socket.IO server
-      // Hardcoded for production deployment
-      const socketUrl = 'https://nss-portal-backend.onrender.com';
-      console.log('   Connecting to:', socketUrl);
+      // Use environment-based URL for flexibility
+      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://nss-portal-backend.onrender.com' 
+          : 'http://localhost:5000');
       
+      console.log('   Connecting to:', socketUrl);
+      console.log('   Environment:', process.env.NODE_ENV);
+      
+      // Try multiple connection strategies
       const newSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 5,
-        timeout: 20000
+        reconnectionDelay: 2000,
+        reconnectionAttempts: 10,
+        timeout: 10000,
+        forceNew: true,
+        upgrade: false,
+        rememberUpgrade: false
+      });
+
+      // Fallback: if WebSocket fails, force polling
+      newSocket.on('connect_error', (error) => {
+        console.error('❌ WebSocket connection failed, trying polling transport...');
+        // Force polling transport
+        newSocket.io.engine.opts.transports = ['polling'];
       });
 
       newSocket.on('connect', () => {
@@ -97,10 +113,34 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on('connect_error', (error) => {
         console.error('❌ Socket.IO connection error:', error);
+        console.error('   Socket URL:', socketUrl);
+        console.error('   Transport used:', newSocket.io.engine.transport.name);
+        
+        // Show user-friendly error message
+        if (error.message === 'timeout') {
+          toast.error('Connection timeout. Please check your internet connection.');
+        } else {
+          toast.error('Real-time features unavailable. Some features may not work.');
+        }
       });
 
       newSocket.on('disconnect', (reason) => {
         console.log('🔌 Socket disconnected:', reason);
+        console.log('   Attempting to reconnect...');
+        
+        if (reason === 'io server disconnect') {
+          toast.error('Server disconnected. Reconnecting...');
+        }
+      });
+
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+        toast.success('Real-time connection restored!');
+      });
+
+      newSocket.on('reconnect_error', (error) => {
+        console.error('❌ Socket reconnection failed:', error);
+        toast.error('Failed to restore real-time connection.');
       });
 
       // Listen for new event notifications

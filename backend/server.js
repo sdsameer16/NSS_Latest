@@ -23,8 +23,15 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 const io = require('socket.io')(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:3000",
+      "http://localhost:3000",
+      "https://localhost:3000",
+      "https://nss-latest.onrender.com",
+      "https://nss-portal-backend.onrender.com"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
