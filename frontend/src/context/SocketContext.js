@@ -20,6 +20,7 @@ export const SocketProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [socketEnabled, setSocketEnabled] = useState(true); // Re-enable for real-time updates
+  const [connectionStatus, setConnectionStatus] = useState('disconnected'); // Track connection status
 
   const fetchStoredNotifications = useCallback(async () => {
     if (!isAuthenticated || !user) return;
@@ -101,6 +102,7 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on('connect', () => {
         console.log('✅ Socket.IO connected:', newSocket.id);
+        setConnectionStatus('connected');
         // Join user's personal room
         const userId = user._id || user.id;
         console.log('👤 Joining user room:', userId);
@@ -116,10 +118,11 @@ export const SocketProvider = ({ children }) => {
         console.error('❌ Socket.IO connection error:', error);
         console.error('   Socket URL:', socketUrl);
         console.error('   Transport used:', newSocket.io.engine.transport.name);
+        setConnectionStatus('error');
         
         // Show user-friendly error message
         if (error.message === 'timeout') {
-          toast.error('Connection timeout. Please check your internet connection.');
+          toast.error('Connection timeout. Real-time features may be limited.');
         } else {
           toast.error('Real-time features unavailable. Some features may not work.');
         }
@@ -128,6 +131,7 @@ export const SocketProvider = ({ children }) => {
       newSocket.on('disconnect', (reason) => {
         console.log('🔌 Socket disconnected:', reason);
         console.log('   Attempting to reconnect...');
+        setConnectionStatus('disconnected');
         
         if (reason === 'io server disconnect') {
           toast.error('Server disconnected. Reconnecting...');
@@ -136,11 +140,13 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on('reconnect', (attemptNumber) => {
         console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
+        setConnectionStatus('connected');
         toast.success('Real-time connection restored!');
       });
 
       newSocket.on('reconnect_error', (error) => {
         console.error('❌ Socket reconnection failed:', error);
+        setConnectionStatus('error');
         toast.error('Failed to restore real-time connection.');
       });
 
@@ -346,6 +352,7 @@ export const SocketProvider = ({ children }) => {
         socket,
         notifications,
         unreadCount,
+        connectionStatus,
         markAsRead,
         markAllAsRead,
         clearNotifications

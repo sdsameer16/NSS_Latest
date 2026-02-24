@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 const NotificationBell = () => {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications } = useSocket();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotifications, connectionStatus } = useSocket();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -47,6 +47,12 @@ const NotificationBell = () => {
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
+        {/* Connection Status Indicator */}
+        <div className={`absolute -bottom-1 -right-1 w-2 h-2 rounded-full ${
+          connectionStatus === 'connected' ? 'bg-green-500' : 
+          connectionStatus === 'error' ? 'bg-red-500' : 
+          'bg-gray-400'
+        }`} title={`Real-time: ${connectionStatus}`} />
       </button>
 
       {isOpen && (
