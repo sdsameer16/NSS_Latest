@@ -75,7 +75,7 @@ export const SocketProvider = ({ children }) => {
       // Use environment-based URL for flexibility
       const socketUrl = process.env.REACT_APP_SOCKET_URL ||
         (process.env.NODE_ENV === 'production'
-          ? 'https://nss-portal-backend.onrender.com'
+          ? 'https://nss-latest.onrender.com'
           : 'http://localhost:5000');
 
       console.log('   Connecting to:', socketUrl);
@@ -274,83 +274,82 @@ export const SocketProvider = ({ children }) => {
       return () => {
         newSocket.close();
       };
-    })();
-} else {
-  // Disconnect if user logs out
-  if (socket) {
-    socket.close();
-    setSocket(null);
-    setNotifications([]);
-    setUnreadCount(0);
-  }
+    } else {
+      // Disconnect if user logs out
+      if (socket) {
+        socket.close();
+        setSocket(null);
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, fetchStoredNotifications]);
 
-const markAsRead = async (notificationId) => {
-  // Update locally
-  setNotifications(prev =>
-    prev.map(notif =>
-      notif.id === notificationId ? { ...notif, read: true } : notif
-    )
-  );
-  setUnreadCount(prev => Math.max(0, prev - 1));
+  const markAsRead = async (notificationId) => {
+    // Update locally
+    setNotifications(prev =>
+      prev.map(notif =>
+        notif.id === notificationId ? { ...notif, read: true } : notif
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
 
-  // Update in database if it's a stored notification
-  if (typeof notificationId === 'string' && notificationId.length > 10) {
-    try {
-      await api.put(`/notifications-api/${notificationId}/read`);
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+    // Update in database if it's a stored notification
+    if (typeof notificationId === 'string' && notificationId.length > 10) {
+      try {
+        await api.put(`/notifications-api/${notificationId}/read`);
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
     }
-  }
-};
+  };
 
-const markAllAsRead = async () => {
-  // Update locally
-  setNotifications(prev =>
-    prev.map(notif => ({ ...notif, read: true }))
-  );
-  setUnreadCount(0);
-
-  // Update in database
-  try {
-    await api.put('/notifications-api/read-all');
-  } catch (error) {
-    console.error('Error marking all as read:', error);
-  }
-};
-
-const clearNotifications = async () => {
-  try {
-    // Clear from backend
-    await api.delete('/notifications-api/clear');
-
-    // Clear from local state
-    setNotifications([]);
+  const markAllAsRead = async () => {
+    // Update locally
+    setNotifications(prev =>
+      prev.map(notif => ({ ...notif, read: true }))
+    );
     setUnreadCount(0);
 
-    toast.success('All notifications cleared!');
-  } catch (error) {
-    console.error('Error clearing notifications:', error);
-    toast.error('Failed to clear notifications');
-  }
-};
+    // Update in database
+    try {
+      await api.put('/notifications-api/read-all');
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+    }
+  };
 
-return (
-  <SocketContext.Provider
-    value={{
-      socket,
-      notifications,
-      unreadCount,
-      connectionStatus,
-      markAsRead,
-      markAllAsRead,
-      clearNotifications
-    }}
-  >
-    {children}
-  </SocketContext.Provider>
-);
+  const clearNotifications = async () => {
+    try {
+      // Clear from backend
+      await api.delete('/notifications-api/clear');
+
+      // Clear from local state
+      setNotifications([]);
+      setUnreadCount(0);
+
+      toast.success('All notifications cleared!');
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      toast.error('Failed to clear notifications');
+    }
+  };
+
+  return (
+    <SocketContext.Provider
+      value={{
+        socket,
+        notifications,
+        unreadCount,
+        connectionStatus,
+        markAsRead,
+        markAllAsRead,
+        clearNotifications
+      }}
+    >
+      {children}
+    </SocketContext.Provider>
+  );
 };
 
