@@ -67,19 +67,43 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && user && socketEnabled) {
-      console.log('🔌 Initializing Socket.IO connection for user:', user);
-      console.log('   User ID:', user._id || user.id);
-      console.log('   User Role:', user.role);
-      
-      // Connect to Socket.IO server
-      // Use environment-based URL for flexibility
-      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
-        (process.env.NODE_ENV === 'production' 
-          ? 'https://nss-portal-backend.onrender.com' 
-          : 'http://localhost:5000');
-      
-      console.log('   Connecting to:', socketUrl);
-      console.log('   Environment:', process.env.NODE_ENV);
+      (async () => {
+        console.log('🔌 Initializing Socket.IO connection for user:', user);
+        console.log('   User ID:', user._id || user.id);
+        console.log('   User Role:', user.role);
+        
+        // Connect to Socket.IO server
+        // Use environment-based URL for flexibility
+        const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+          (process.env.NODE_ENV === 'production' 
+            ? 'https://nss-portal-backend.onrender.com' 
+            : 'http://localhost:5000');
+        
+        console.log('   Connecting to:', socketUrl);
+        console.log('   Environment:', process.env.NODE_ENV);
+        
+        // Quick health check before attempting Socket.IO connection
+        const healthCheck = async () => {
+          try {
+            const response = await fetch(`${socketUrl}/health`, {
+              method: 'GET',
+              timeout: 5000
+            });
+            return response.ok;
+          } catch (error) {
+            console.log('⚠️ Backend health check failed:', error.message);
+            return false;
+          }
+        };
+        
+        // Only attempt Socket.IO if backend is responsive
+        const isBackendHealthy = await healthCheck();
+        if (!isBackendHealthy) {
+          console.log('❌ Backend not reachable, skipping Socket.IO connection');
+          setConnectionStatus('error');
+          toast.error('Backend server unreachable. Real-time features disabled.');
+          return;
+        }
       
       // Try multiple connection strategies
       const newSocket = io(socketUrl, {
@@ -89,20 +113,40 @@ export const SocketProvider = ({ children }) => {
         reconnectionAttempts: 10,
         timeout: 10000,
         forceNew: true,
-        upgrade: false,
+        upgrade: true,
         rememberUpgrade: false
       });
 
       // Fallback: if WebSocket fails, force polling
+      let connectionAttempts = 0;
       newSocket.on('connect_error', (error) => {
-        console.error('❌ WebSocket connection failed, trying polling transport...');
-        // Force polling transport
-        newSocket.io.engine.opts.transports = ['polling'];
+        connectionAttempts++;
+        console.error(`❌ Socket.IO connection error (attempt ${connectionAttempts}):`, error);
+        console.error('   Socket URL:', socketUrl);
+        
+        setConnectionStatus('error');
+        
+        // Force polling transport after 2 failed attempts
+        if (connectionAttempts >= 2) {
+          console.log('🔄 Switching to polling transport...');
+          newSocket.io.opts.transports = ['polling'];
+          newSocket.io.engine.close();
+          newSocket.io.engine.open();
+        }
+        
+        // Show user-friendly error message
+        if (error.message === 'timeout') {
+          toast.error('Connection timeout. Real-time features may be limited.');
+        } else {
+          toast.error('Real-time features unavailable. Some features may not work.');
+        }
       });
 
       newSocket.on('connect', () => {
         console.log('✅ Socket.IO connected:', newSocket.id);
         setConnectionStatus('connected');
+        connectionAttempts = 0; // Reset attempts on successful connection
+        
         // Join user's personal room
         const userId = user._id || user.id;
         console.log('👤 Joining user room:', userId);
@@ -284,6 +328,7 @@ export const SocketProvider = ({ children }) => {
       return () => {
         newSocket.close();
       };
+      })();
     } else {
       // Disconnect if user logs out
       if (socket) {
