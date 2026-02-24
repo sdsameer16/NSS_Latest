@@ -34,6 +34,20 @@ const StudentEvents = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
+  // Continuous polling every 2 seconds as backup
+  useEffect(() => {
+    if (!socket) return;
+
+    const pollingInterval = setInterval(() => {
+      console.log('🔄 Polling for events updates...');
+      fetchEvents();
+    }, 2000); // 2 seconds
+
+    return () => {
+      clearInterval(pollingInterval);
+    };
+  }, [socket, filter]);
+
   // Real-time event updates
   useEffect(() => {
     if (!socket) return;

@@ -30,6 +30,20 @@ const AdminEvents = () => {
     fetchEvents();
   }, []);
 
+  // Continuous polling every 2 seconds as backup
+  useEffect(() => {
+    if (!socket) return;
+
+    const pollingInterval = setInterval(() => {
+      console.log('🔄 Admin: Polling for events updates...');
+      fetchEvents();
+    }, 2000); // 2 seconds
+
+    return () => {
+      clearInterval(pollingInterval);
+    };
+  }, [socket]);
+
   // Real-time event updates for admin
   useEffect(() => {
     if (!socket) return;
