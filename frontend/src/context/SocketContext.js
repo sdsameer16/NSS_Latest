@@ -24,7 +24,7 @@ export const SocketProvider = ({ children }) => {
 
   const fetchStoredNotifications = useCallback(async () => {
     if (!isAuthenticated || !user) return;
-    
+
     try {
       const response = await api.get('/notifications-api');
       if (response.data.notifications) {
@@ -70,17 +70,17 @@ export const SocketProvider = ({ children }) => {
       console.log('🔌 Initializing Socket.IO connection for user:', user);
       console.log('   User ID:', user._id || user.id);
       console.log('   User Role:', user.role);
-      
+
       // Connect to Socket.IO server
       // Use environment-based URL for flexibility
-      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
-        (process.env.NODE_ENV === 'production' 
-          ? 'https://nss-portal-backend.onrender.com' 
+      const socketUrl = process.env.REACT_APP_SOCKET_URL ||
+        (process.env.NODE_ENV === 'production'
+          ? 'https://nss-portal-backend.onrender.com'
           : 'http://localhost:5000');
-      
+
       console.log('   Connecting to:', socketUrl);
       console.log('   Environment:', process.env.NODE_ENV);
-      
+
       // Simple connection with fallback
       const newSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
@@ -94,7 +94,7 @@ export const SocketProvider = ({ children }) => {
       newSocket.on('connect', () => {
         console.log('✅ Socket.IO connected:', newSocket.id);
         setConnectionStatus('connected');
-        
+
         // Join user's personal room
         const userId = user._id || user.id;
         console.log('👤 Joining user room:', userId);
@@ -110,7 +110,7 @@ export const SocketProvider = ({ children }) => {
         console.error('❌ Socket.IO connection error:', error);
         console.error('   Socket URL:', socketUrl);
         setConnectionStatus('error');
-        
+
         // Show user-friendly error message
         if (error.message === 'timeout') {
           toast.error('Connection timeout. Real-time features may be limited.');
@@ -122,7 +122,7 @@ export const SocketProvider = ({ children }) => {
       newSocket.on('disconnect', (reason) => {
         console.log('🔌 Socket disconnected:', reason);
         setConnectionStatus('disconnected');
-        
+
         if (reason === 'io server disconnect') {
           toast.error('Server disconnected. Reconnecting...');
         }
@@ -153,35 +153,35 @@ export const SocketProvider = ({ children }) => {
         };
         setNotifications(prev => [notification, ...prev]);
         setUnreadCount(prev => prev + 1);
-        
+
         // Refresh stored notifications
         fetchStoredNotifications();
-        
+
         // Show toast with option to refresh events
         toast.success(data.message || 'New event available!', {
           duration: 5000,
           onClick: () => {
-            window.location.href = '/student/events';
+            if (window.location.pathname.includes('/student/events')) {
+              // The component will handle its own update if on the right page
+            } else {
+              window.location.href = '/student/events';
+            }
           }
         });
-        
-        // Auto-refresh events list after a short delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+
       });
 
       // Listen for participation approval notifications
       newSocket.on('participation-approved', async (data) => {
         console.log('🔔 Participation approved notification received:', data);
-        
+
         // Check if this notification is for the current user
         const userId = user._id || user.id;
         if (data.targetUserId && data.targetUserId !== userId.toString()) {
           console.log('Notification not for current user, skipping');
           return;
         }
-        
+
         const notification = {
           id: Date.now(),
           type: 'participation-approved',
@@ -192,10 +192,10 @@ export const SocketProvider = ({ children }) => {
         };
         setNotifications(prev => [notification, ...prev]);
         setUnreadCount(prev => prev + 1);
-        
+
         // Refresh stored notifications
         fetchStoredNotifications();
-        
+
         toast.success(data.message || 'Your participation has been approved!', {
           duration: 5000,
           onClick: () => {
@@ -219,10 +219,10 @@ export const SocketProvider = ({ children }) => {
           };
           setNotifications(prev => [notification, ...prev]);
           setUnreadCount(prev => prev + 1);
-          
+
           // Refresh stored notifications
           fetchStoredNotifications();
-          
+
           toast.success(data.message || 'New event available!', {
             duration: 5000,
             onClick: () => {
@@ -247,10 +247,10 @@ export const SocketProvider = ({ children }) => {
           };
           setNotifications(prev => [notification, ...prev]);
           setUnreadCount(prev => prev + 1);
-          
+
           // Refresh stored notifications
           fetchStoredNotifications();
-          
+
           toast.success(data.message || 'Your participation has been approved!', {
             duration: 5000,
             onClick: () => {
@@ -275,82 +275,82 @@ export const SocketProvider = ({ children }) => {
         newSocket.close();
       };
     })();
-    } else {
-      // Disconnect if user logs out
-      if (socket) {
-        socket.close();
-        setSocket(null);
-        setNotifications([]);
-        setUnreadCount(0);
-      }
+} else {
+  // Disconnect if user logs out
+  if (socket) {
+    socket.close();
+    setSocket(null);
+    setNotifications([]);
+    setUnreadCount(0);
+  }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user, fetchStoredNotifications]);
 
-  const markAsRead = async (notificationId) => {
-    // Update locally
-    setNotifications(prev =>
-      prev.map(notif =>
-        notif.id === notificationId ? { ...notif, read: true } : notif
-      )
-    );
-    setUnreadCount(prev => Math.max(0, prev - 1));
-    
-    // Update in database if it's a stored notification
-    if (typeof notificationId === 'string' && notificationId.length > 10) {
-      try {
-        await api.put(`/notifications-api/${notificationId}/read`);
-      } catch (error) {
-        console.error('Error marking notification as read:', error);
-      }
-    }
-  };
-
-  const markAllAsRead = async () => {
-    // Update locally
-    setNotifications(prev =>
-      prev.map(notif => ({ ...notif, read: true }))
-    );
-    setUnreadCount(0);
-    
-    // Update in database
-    try {
-      await api.put('/notifications-api/read-all');
-    } catch (error) {
-      console.error('Error marking all as read:', error);
-    }
-  };
-
-  const clearNotifications = async () => {
-    try {
-      // Clear from backend
-      await api.delete('/notifications-api/clear');
-      
-      // Clear from local state
-      setNotifications([]);
-      setUnreadCount(0);
-      
-      toast.success('All notifications cleared!');
-    } catch (error) {
-      console.error('Error clearing notifications:', error);
-      toast.error('Failed to clear notifications');
-    }
-  };
-
-  return (
-    <SocketContext.Provider
-      value={{
-        socket,
-        notifications,
-        unreadCount,
-        connectionStatus,
-        markAsRead,
-        markAllAsRead,
-        clearNotifications
-      }}
-    >
-      {children}
-    </SocketContext.Provider>
+const markAsRead = async (notificationId) => {
+  // Update locally
+  setNotifications(prev =>
+    prev.map(notif =>
+      notif.id === notificationId ? { ...notif, read: true } : notif
+    )
   );
+  setUnreadCount(prev => Math.max(0, prev - 1));
+
+  // Update in database if it's a stored notification
+  if (typeof notificationId === 'string' && notificationId.length > 10) {
+    try {
+      await api.put(`/notifications-api/${notificationId}/read`);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  }
+};
+
+const markAllAsRead = async () => {
+  // Update locally
+  setNotifications(prev =>
+    prev.map(notif => ({ ...notif, read: true }))
+  );
+  setUnreadCount(0);
+
+  // Update in database
+  try {
+    await api.put('/notifications-api/read-all');
+  } catch (error) {
+    console.error('Error marking all as read:', error);
+  }
+};
+
+const clearNotifications = async () => {
+  try {
+    // Clear from backend
+    await api.delete('/notifications-api/clear');
+
+    // Clear from local state
+    setNotifications([]);
+    setUnreadCount(0);
+
+    toast.success('All notifications cleared!');
+  } catch (error) {
+    console.error('Error clearing notifications:', error);
+    toast.error('Failed to clear notifications');
+  }
+};
+
+return (
+  <SocketContext.Provider
+    value={{
+      socket,
+      notifications,
+      unreadCount,
+      connectionStatus,
+      markAsRead,
+      markAllAsRead,
+      clearNotifications
+    }}
+  >
+    {children}
+  </SocketContext.Provider>
+);
 };
 

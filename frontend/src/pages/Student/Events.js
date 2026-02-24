@@ -9,22 +9,22 @@ import { useSocket } from '../../context/SocketContext';
 
 const StudentEvents = () => {
   console.log('🎯 Student Events component mounting...');
-  
+
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const { socket } = useSocket();
-  
+
   // Refs to prevent stale closures
   const filterRef = useRef(filter);
   const socketRef = useRef(socket);
-  
+
   // Keep refs in sync with state
   useEffect(() => {
     filterRef.current = filter;
   }, [filter]);
-  
+
   useEffect(() => {
     socketRef.current = socket;
   }, [socket]);
@@ -46,7 +46,7 @@ const StudentEvents = () => {
 
   useEffect(() => {
     fetchEvents();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   // HTTP polling as primary update method with debugging
@@ -54,14 +54,14 @@ const StudentEvents = () => {
     console.log('🔄 Starting HTTP polling for events updates...');
     console.log('   Filter:', filterRef.current);
     console.log('   Socket available:', !!socketRef.current);
-    
+
     let pollingCount = 0;
-    
+
     const pollEvents = async () => {
       try {
         pollingCount++;
         console.log(`🔄 Polling attempt #${pollingCount}`);
-        
+
         // Use functional update to prevent stale closures
         setRefreshing(prev => {
           if (prev) {
@@ -70,37 +70,37 @@ const StudentEvents = () => {
           }
           return true;
         });
-        
+
         const currentFilter = filterRef.current;
         const params = currentFilter !== 'all' ? { status: currentFilter } : {};
-        
+
         console.log('   Fetching with params:', params);
         const response = await api.get('/events', { params });
-        
+
         console.log('   Response status:', response.status);
         console.log('   Events received:', response.data?.length || 0);
-        
+
         // Functional update to prevent stale state issues
         setEvents(response.data || []);
-        
+
         setRefreshing(false);
-        
+
       } catch (error) {
         console.error('❌ Polling error:', error);
         console.error('   Error details:', error.response?.data || error.message);
-        
+
         setRefreshing(false);
-        
+
         // Show error toast only on actual failures
         if (pollingCount % 5 === 0) { // Every 10 seconds (5 polls)
           toast.error('Failed to update events. Please refresh the page.');
         }
       }
     };
-    
+
     // Initial poll
     pollEvents();
-    
+
     // Set up polling interval
     const pollingInterval = setInterval(pollEvents, 2000); // 2 seconds
 
@@ -120,7 +120,7 @@ const StudentEvents = () => {
       toast.success(`New event: ${data.event?.title || data.message}`, {
         duration: 5000
       });
-      
+
       // Use ref to get latest fetchEvents function
       setTimeout(() => {
         fetchEvents();
@@ -130,7 +130,7 @@ const StudentEvents = () => {
     const handleEventUpdate = (data) => {
       console.log('🔄 Event updated:', data);
       toast.info(`Event updated: ${data.event?.title || data.message}`);
-      
+
       setTimeout(() => {
         fetchEvents();
       }, 100);
@@ -139,7 +139,7 @@ const StudentEvents = () => {
     const handleEventDelete = (data) => {
       console.log('🗑️ Event deleted:', data);
       toast.error(`Event removed: ${data.event?.title || data.message}`);
-      
+
       setTimeout(() => {
         fetchEvents();
       }, 100);
@@ -147,14 +147,17 @@ const StudentEvents = () => {
 
     // Listen for real-time events
     currentSocket.on('new-event', handleNewEvent);
+    currentSocket.on('new-event-broadcast', handleNewEvent);
     currentSocket.on('event-updated', handleEventUpdate);
     currentSocket.on('event-deleted', handleEventDelete);
 
     return () => {
       currentSocket.off('new-event', handleNewEvent);
+      currentSocket.off('new-event-broadcast', handleNewEvent);
       currentSocket.off('event-updated', handleEventUpdate);
       currentSocket.off('event-deleted', handleEventDelete);
     };
+
   }, [socketRef.current]); // Only re-attach when socket changes
 
   const fetchEvents = useCallback(async () => {
@@ -164,11 +167,11 @@ const StudentEvents = () => {
         if (prev) return true; // Prevent multiple simultaneous fetches
         return true;
       });
-      
+
       const currentFilter = filterRef.current;
       const params = currentFilter !== 'all' ? { status: currentFilter } : {};
       const response = await api.get('/events', { params });
-      
+
       // Functional update to prevent stale state issues
       setEvents(response.data);
     } catch (error) {
@@ -219,7 +222,7 @@ const StudentEvents = () => {
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {events.map((event) => (
-          <div key={event._id} className="event-card bg-white dark:bg-gray-800 shadow-lg hover:shadow-2xl rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:scale-105" style={{opacity: 0}}>
+          <div key={event._id} className="event-card bg-white dark:bg-gray-800 shadow-lg hover:shadow-2xl rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-700 transition-all duration-300 hover:-translate-y-2 hover:scale-105" style={{ opacity: 0 }}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-semibold text-gray-900">{event.title}</h3>
@@ -228,7 +231,7 @@ const StudentEvents = () => {
                 </span>
               </div>
               <p className="text-sm text-gray-600 mb-4 line-clamp-2">{event.description}</p>
-              
+
               <div className="space-y-2 mb-4">
                 <div className="flex items-center text-sm text-gray-600">
                   <MapPinIcon className="h-4 w-4 mr-2" />

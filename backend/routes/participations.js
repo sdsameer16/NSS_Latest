@@ -110,7 +110,29 @@ router.post('/', [auth, authorize('student')], async (req, res) => {
       console.error('Failed to send registration confirmation email:', error);
     }
 
+    // Send WebSocket notification to admins
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('new-participation', {
+          type: 'new-participation',
+          message: `New registration for "${participation.event.title}"`,
+          participation: {
+            id: participation._id,
+            student: participation.student,
+            event: participation.event,
+            status: participation.status
+          },
+          timestamp: new Date()
+        });
+        console.log(`🔔 Socket: New participation emitted for event: ${participation.event.title}`);
+      }
+    } catch (socketError) {
+      console.error('Socket emission failed for registration:', socketError);
+    }
+
     res.status(201).json(participation);
+
   } catch (error) {
     console.error('Register participation error:', error);
     if (error.code === 11000) {
@@ -169,7 +191,7 @@ router.put('/:id/approve', [auth, authorize('admin', 'faculty')], async (req, re
       if (io) {
         const studentId = participation.student._id.toString();
         const roomName = `user-${studentId}`;
-        
+
         const notificationData = {
           type: 'participation-approved',
           message: `Your participation for "${participation.event.title}" has been approved!`,
@@ -181,16 +203,16 @@ router.put('/:id/approve', [auth, authorize('admin', 'faculty')], async (req, re
           },
           timestamp: new Date()
         };
-        
+
         console.log(`📤 Sending approval notification to room: ${roomName}`);
         io.to(roomName).emit('participation-approved', notificationData);
-        
+
         // Also emit to the socket directly if we can find it
         io.emit('participation-approved-broadcast', {
           ...notificationData,
           targetUserId: studentId
         });
-        
+
         // Store notification in database for later access
         try {
           await Notification.create({
@@ -209,7 +231,7 @@ router.put('/:id/approve', [auth, authorize('admin', 'faculty')], async (req, re
         } catch (err) {
           console.error(`❌ Failed to store notification:`, err.message);
         }
-        
+
         console.log(`🔔 WebSocket notification sent to student ${studentId}`);
       } else {
         console.warn('⚠️ Socket.IO not available');
@@ -218,7 +240,29 @@ router.put('/:id/approve', [auth, authorize('admin', 'faculty')], async (req, re
       console.error('❌ Failed to send WebSocket notification:', error);
     }
 
+    // Broadcast update to everyone (especially admins)
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('participation-updated', {
+          type: 'participation-updated',
+          message: `Participation updated for "${participation.event.title}"`,
+          participation: {
+            id: participation._id,
+            student: participation.student,
+            event: participation.event,
+            status: participation.status
+          },
+          timestamp: new Date()
+        });
+        console.log(`🔄 Socket: Participation update emitted for student: ${participation.student.name}`);
+      }
+    } catch (socketError) {
+      console.error('Socket emission failed for approval:', socketError);
+    }
+
     res.json(participation);
+
   } catch (error) {
     console.error('Approve participation error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -256,7 +300,28 @@ router.put('/:id/reject', [auth, authorize('admin', 'faculty')], async (req, res
     await participation.populate('student', 'name email studentId');
     await participation.populate('event', 'title eventType');
 
+    // Broadcast update
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('participation-updated', {
+          type: 'participation-updated',
+          message: `Participation rejected for "${participation.event.title}"`,
+          participation: {
+            id: participation._id,
+            student: participation.student,
+            event: participation.event,
+            status: participation.status
+          },
+          timestamp: new Date()
+        });
+      }
+    } catch (socketError) {
+      console.error('Socket emission failed for rejection:', socketError);
+    }
+
     res.json(participation);
+
   } catch (error) {
     console.error('Reject participation error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -347,9 +412,31 @@ router.put('/:id/attendance', [auth, authorize('admin', 'faculty')], async (req,
     await participation.populate('student', 'name email studentId totalVolunteerHours');
     await participation.populate('event', 'title eventType');
 
+    // Broadcast update
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('participation-updated', {
+          type: 'participation-updated',
+          message: `Attendance updated for "${participation.event.title}"`,
+          participation: {
+            id: participation._id,
+            student: participation.student,
+            event: participation.event,
+            status: participation.status,
+            attendance: participation.attendance
+          },
+          timestamp: new Date()
+        });
+      }
+    } catch (socketError) {
+      console.error('Socket emission failed for attendance:', socketError);
+    }
+
     console.log('📤 Sending response with updated data');
     console.log('=== END ATTENDANCE MARKING ===\n');
     res.json(participation);
+
   } catch (error) {
     console.error('Mark attendance error:', error);
     res.status(500).json({ message: 'Server error' });

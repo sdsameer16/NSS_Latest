@@ -10,6 +10,8 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import api from '../../utils/api';
+import { useSocket } from '../../context/SocketContext';
+
 
 const ATTENDANCE_THRESHOLD = 75;
 
@@ -44,16 +46,45 @@ const AdminParticipations = () => {
 
   useEffect(() => {
     loadEvents();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     fetchParticipations();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEvent, statusFilter]);
+
+  const { socket } = useSocket();
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewParticipation = (data) => {
+      console.log('🔔 New participation received:', data);
+      // Only refresh if it's for the selected event (if any selected)
+      if (!selectedEvent || data.participation?.event === selectedEvent || data.participation?.event?._id === selectedEvent) {
+        fetchParticipations();
+        toast.success(`New registration: ${data.participation?.student?.name || 'A student'}`);
+      }
+    };
+
+    const handleParticipationUpdated = (data) => {
+      console.log('🔄 Participation update received:', data);
+      fetchParticipations();
+    };
+
+    socket.on('new-participation', handleNewParticipation);
+    socket.on('participation-updated', handleParticipationUpdated);
+
+    return () => {
+      socket.off('new-participation', handleNewParticipation);
+      socket.off('participation-updated', handleParticipationUpdated);
+    };
+  }, [socket, selectedEvent]);
 
   useEffect(() => {
     if (fileUploaded) {
+
       applyAutoDecisions();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -475,8 +506,8 @@ const AdminParticipations = () => {
             onClick={confirmDecisions}
             disabled={processingDecisions || actionableCount === 0}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold shadow ${actionableCount === 0 || processingDecisions
-                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                : 'bg-primary-600 text-white hover:bg-primary-700'
+              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              : 'bg-primary-600 text-white hover:bg-primary-700'
               }`}
           >
             {processingDecisions ? (
@@ -640,14 +671,14 @@ const AdminParticipations = () => {
                       </div>
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${participation.status === 'approved'
-                            ? 'bg-green-100 text-green-800'
-                            : participation.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : participation.status === 'rejected'
-                                ? 'bg-red-100 text-red-800'
-                                : participation.status === 'attended'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-purple-100 text-purple-800'
+                          ? 'bg-green-100 text-green-800'
+                          : participation.status === 'pending'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : participation.status === 'rejected'
+                              ? 'bg-red-100 text-red-800'
+                              : participation.status === 'attended'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-purple-100 text-purple-800'
                           }`}
                       >
                         {participation.status}
@@ -655,8 +686,8 @@ const AdminParticipations = () => {
                       {decisionLabel && (
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded-full border ${decisionLabel === 'approve'
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                              : 'bg-rose-50 border-rose-200 text-rose-700'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                            : 'bg-rose-50 border-rose-200 text-rose-700'
                             }`}
                         >
                           {decisionLabel === 'approve' ? 'Queued: Approve' : 'Queued: Reject'}{' '}
@@ -681,8 +712,8 @@ const AdminParticipations = () => {
                           {attendancePercent !== null ? (
                             <span
                               className={`inline-flex items-center gap-2 px-3 py-1 rounded-md border text-xs font-semibold ${attendancePercent >= ATTENDANCE_THRESHOLD
-                                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                  : 'bg-rose-50 border-rose-200 text-rose-700'
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                : 'bg-rose-50 border-rose-200 text-rose-700'
                                 }`}
                             >
                               Attendance: {attendancePercent}%
