@@ -25,34 +25,85 @@ const AdminEvents = () => {
   const [previewFile, setPreviewFile] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const { socket } = useSocket();
+  
+  // Refs to prevent stale closures
+  const socketRef = useRef(socket);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    socketRef.current = socket;
+  }, [socket]);
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
-  // Continuous polling every 2 seconds as backup
+  // HTTP polling as primary update method with debugging
   useEffect(() => {
-    if (!socket) return;
-
-    const pollingInterval = setInterval(() => {
-      console.log('🔄 Admin: Polling for events updates...');
-      fetchEvents();
-    }, 2000); // 2 seconds
+    console.log('🔄 Admin: Starting HTTP polling for events updates...');
+    console.log('   Socket available:', !!socketRef.current);
+    
+    let pollingCount = 0;
+    
+    const pollEvents = async () => {
+      try {
+        pollingCount++;
+        console.log(`🔄 Admin: Polling attempt #${pollingCount}`);
+        
+        // Use functional update to prevent stale closures
+        setRefreshing(prev => {
+          if (prev) {
+            console.log('⚠️ Previous admin poll still running, skipping...');
+            return prev;
+          }
+          return true;
+        });
+        
+        console.log('   Fetching all events...');
+        const response = await api.get('/events');
+        
+        console.log('   Response status:', response.status);
+        console.log('   Events received:', response.data?.length || 0);
+        
+        // Functional update to prevent stale state issues
+        setEvents(response.data || []);
+        
+        setRefreshing(false);
+        
+      } catch (error) {
+        console.error('❌ Admin polling error:', error);
+        console.error('   Error details:', error.response?.data || error.message);
+        
+        setRefreshing(false);
+        
+        // Show error toast only on actual failures
+        if (pollingCount % 5 === 0) { // Every 10 seconds (5 polls)
+          toast.error('Failed to update events. Please refresh the page.');
+        }
+      }
+    };
+    
+    // Initial poll
+    pollEvents();
+    
+    // Set up polling interval
+    const pollingInterval = setInterval(pollEvents, 2000); // 2 seconds
 
     return () => {
+      console.log('🛑 Admin: Cleaning up polling interval');
       clearInterval(pollingInterval);
     };
-  }, [socket]);
+  }, []); // Admin polling runs regardless
 
-  // Real-time event updates for admin
+  // Real-time event updates with stale closure prevention
   useEffect(() => {
-    if (!socket) return;
+    const currentSocket = socketRef.current;
+    if (!currentSocket) return;
 
     const handleNewEvent = (data) => {
       console.log('🔔 Admin: New event received:', data);
       toast.success(`New event created: ${data.event?.title || data.message}`);
       
-      // Auto-refresh events list without causing re-render loops
       setTimeout(() => {
         fetchEvents();
       }, 100);
@@ -62,7 +113,6 @@ const AdminEvents = () => {
       console.log('🔄 Admin: Event updated:', data);
       toast.info(`Event updated: ${data.event?.title || data.message}`);
       
-      // Auto-refresh events list
       setTimeout(() => {
         fetchEvents();
       }, 100);
@@ -72,31 +122,34 @@ const AdminEvents = () => {
       console.log('🗑️ Admin: Event deleted:', data);
       toast.error(`Event deleted: ${data.event?.title || data.message}`);
       
-      // Auto-refresh events list
       setTimeout(() => {
         fetchEvents();
       }, 100);
     };
 
     // Listen for real-time events
-    socket.on('new-event', handleNewEvent);
-    socket.on('event-updated', handleEventUpdate);
-    socket.on('event-deleted', handleEventDelete);
+    currentSocket.on('new-event', handleNewEvent);
+    currentSocket.on('event-updated', handleEventUpdate);
+    currentSocket.on('event-deleted', handleEventDelete);
 
     return () => {
-      socket.off('new-event', handleNewEvent);
-      socket.off('event-updated', handleEventUpdate);
-      socket.off('event-deleted', handleEventDelete);
+      currentSocket.off('new-event', handleNewEvent);
+      currentSocket.off('event-updated', handleEventUpdate);
+      currentSocket.off('event-deleted', handleEventDelete);
     };
-  }, [socket]);
+  }, [socketRef.current]); // Only re-attach when socket changes
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
-      // Prevent multiple simultaneous fetches
-      if (refreshing) return;
+      // Use functional update to prevent stale closures
+      setRefreshing(prev => {
+        if (prev) return true; // Prevent multiple simultaneous fetches
+        return true;
+      });
       
-      setRefreshing(true);
       const response = await api.get('/events');
+      
+      // Functional update to prevent stale state issues
       setEvents(response.data);
     } catch (error) {
       toast.error('Failed to fetch events');
@@ -104,7 +157,7 @@ const AdminEvents = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
   const viewSubmissionFile = (file) => {
     // Direct viewing approach based on file type
