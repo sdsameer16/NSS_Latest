@@ -12,6 +12,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import EventModal from '../../components/Admin/EventModal';
+import { useSocket } from '../../context/SocketContext';
 
 const AdminEvents = () => {
   const [events, setEvents] = useState([]);
@@ -22,10 +23,45 @@ const AdminEvents = () => {
   const [submissions, setSubmissions] = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const { socket } = useSocket();
 
   useEffect(() => {
     fetchEvents();
   }, []);
+
+  // Real-time event updates for admin
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewEvent = (data) => {
+      console.log('🔔 Admin: New event received:', data);
+      toast.success(`New event created: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    const handleEventUpdate = (data) => {
+      console.log('🔄 Admin: Event updated:', data);
+      toast.info(`Event updated: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    const handleEventDelete = (data) => {
+      console.log('🗑️ Admin: Event deleted:', data);
+      toast.error(`Event deleted: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    // Listen for real-time events
+    socket.on('new-event', handleNewEvent);
+    socket.on('event-updated', handleEventUpdate);
+    socket.on('event-deleted', handleEventDelete);
+
+    return () => {
+      socket.off('new-event', handleNewEvent);
+      socket.off('event-updated', handleEventUpdate);
+      socket.off('event-deleted', handleEventDelete);
+    };
+  }, [socket]);
 
   const fetchEvents = async () => {
     try {

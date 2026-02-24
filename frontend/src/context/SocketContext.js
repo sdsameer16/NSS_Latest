@@ -19,6 +19,7 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [socketEnabled, setSocketEnabled] = useState(true); // Re-enable for real-time updates
 
   const fetchStoredNotifications = useCallback(async () => {
     if (!isAuthenticated || !user) return;
@@ -64,7 +65,7 @@ export const SocketProvider = ({ children }) => {
   }, [isAuthenticated, user, fetchStoredNotifications]);
 
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && socketEnabled) {
       console.log('🔌 Initializing Socket.IO connection for user:', user);
       console.log('   User ID:', user._id || user.id);
       console.log('   User Role:', user.role);

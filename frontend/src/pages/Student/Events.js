@@ -5,11 +5,13 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { CalendarIcon, MapPinIcon, UserGroupIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import anime from 'animejs/lib/anime.es.js';
+import { useSocket } from '../../context/SocketContext';
 
 const StudentEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const { socket } = useSocket();
 
   // Animate events when they load
   useEffect(() => {
@@ -30,6 +32,48 @@ const StudentEvents = () => {
     fetchEvents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  // Real-time event updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewEvent = (data) => {
+      console.log('🔔 New event received:', data);
+      toast.success(`New event: ${data.event?.title || data.message}`, {
+        duration: 5000,
+        onClick: () => {
+          // Auto-refresh events list
+          fetchEvents();
+        }
+      });
+      
+      // Auto-refresh events list
+      fetchEvents();
+    };
+
+    const handleEventUpdate = (data) => {
+      console.log('🔄 Event updated:', data);
+      toast.info(`Event updated: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    const handleEventDelete = (data) => {
+      console.log('🗑️ Event deleted:', data);
+      toast.error(`Event removed: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    // Listen for real-time events
+    socket.on('new-event', handleNewEvent);
+    socket.on('event-updated', handleEventUpdate);
+    socket.on('event-deleted', handleEventDelete);
+
+    return () => {
+      socket.off('new-event', handleNewEvent);
+      socket.off('event-updated', handleEventUpdate);
+      socket.off('event-deleted', handleEventDelete);
+    };
+  }, [socket, filter]);
 
   const fetchEvents = async () => {
     try {

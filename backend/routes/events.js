@@ -151,6 +151,21 @@ router.post('/', [
                 timestamp: new Date()
               });
             });
+
+            // Broadcast to all connected users (admin + students)
+            io.emit('new-event', {
+              type: 'new-event',
+              message: `New event: ${event.title}`,
+              event: {
+                id: event._id,
+                title: event.title,
+                eventType: event.eventType,
+                location: event.location,
+                startDate: event.startDate,
+                status: event.status
+              },
+              timestamp: new Date()
+            });
           }
         }
       } catch (error) {
@@ -379,6 +394,25 @@ router.put('/:id', [auth, authorize('admin', 'faculty')], async (req, res) => {
 
     await event.populate('organizer', 'name email');
 
+    // Broadcast event update to all connected users
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('event-updated', {
+        type: 'event-updated',
+        message: `Event updated: ${event.title}`,
+        event: {
+          id: event._id,
+          title: event.title,
+          eventType: event.eventType,
+          location: event.location,
+          startDate: event.startDate,
+          status: event.status
+        },
+        timestamp: new Date()
+      });
+      console.log(`🔄 Broadcasted event update: ${event.title}`);
+    }
+
     res.json(event);
   } catch (error) {
     console.error('Update event error:', error);
@@ -399,6 +433,25 @@ router.delete('/:id', [auth, authorize('admin')], async (req, res) => {
 
     // Delete related participations
     await Participation.deleteMany({ event: event._id });
+
+    // Broadcast event deletion to all connected users
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('event-deleted', {
+        type: 'event-deleted',
+        message: `Event deleted: ${event.title}`,
+        event: {
+          id: event._id,
+          title: event.title,
+          eventType: event.eventType,
+          location: event.location,
+          startDate: event.startDate,
+          status: event.status
+        },
+        timestamp: new Date()
+      });
+      console.log(`🗑️ Broadcasted event deletion: ${event.title}`);
+    }
 
     await Event.findByIdAndDelete(req.params.id);
 
