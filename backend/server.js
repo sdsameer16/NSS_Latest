@@ -54,7 +54,17 @@ app.use('/api/contributions', require('./routes/contributions'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/upload', require('./routes/upload'));
-app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/notifications-api', require('./routes/notifications'));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    socketio: 'running'
+  });
+});
+
 app.use('/api/notifications-api', require('./routes/notifications-api'));
 app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/ai-assistant', require('./routes/aiAssistant'));

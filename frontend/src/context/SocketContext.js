@@ -67,85 +67,33 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && user && socketEnabled) {
-      (async () => {
-        console.log('🔌 Initializing Socket.IO connection for user:', user);
-        console.log('   User ID:', user._id || user.id);
-        console.log('   User Role:', user.role);
-        
-        // Connect to Socket.IO server
-        // Use environment-based URL for flexibility
-        const socketUrl = process.env.REACT_APP_SOCKET_URL || 
-          (process.env.NODE_ENV === 'production' 
-            ? 'https://nss-portal-backend.onrender.com' 
-            : 'http://localhost:5000');
-        
-        console.log('   Connecting to:', socketUrl);
-        console.log('   Environment:', process.env.NODE_ENV);
-        
-        // Quick health check before attempting Socket.IO connection
-        const healthCheck = async () => {
-          try {
-            const response = await fetch(`${socketUrl}/health`, {
-              method: 'GET',
-              timeout: 5000
-            });
-            return response.ok;
-          } catch (error) {
-            console.log('⚠️ Backend health check failed:', error.message);
-            return false;
-          }
-        };
-        
-        // Only attempt Socket.IO if backend is responsive
-        const isBackendHealthy = await healthCheck();
-        if (!isBackendHealthy) {
-          console.log('❌ Backend not reachable, skipping Socket.IO connection');
-          setConnectionStatus('error');
-          toast.error('Backend server unreachable. Real-time features disabled.');
-          return;
-        }
+      console.log('🔌 Initializing Socket.IO connection for user:', user);
+      console.log('   User ID:', user._id || user.id);
+      console.log('   User Role:', user.role);
       
-      // Try multiple connection strategies
+      // Connect to Socket.IO server
+      // Use environment-based URL for flexibility
+      const socketUrl = process.env.REACT_APP_SOCKET_URL || 
+        (process.env.NODE_ENV === 'production' 
+          ? 'https://nss-portal-backend.onrender.com' 
+          : 'http://localhost:5000');
+      
+      console.log('   Connecting to:', socketUrl);
+      console.log('   Environment:', process.env.NODE_ENV);
+      
+      // Simple connection with fallback
       const newSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionDelay: 2000,
-        reconnectionAttempts: 10,
-        timeout: 10000,
-        forceNew: true,
-        upgrade: true,
-        rememberUpgrade: false
-      });
-
-      // Fallback: if WebSocket fails, force polling
-      let connectionAttempts = 0;
-      newSocket.on('connect_error', (error) => {
-        connectionAttempts++;
-        console.error(`❌ Socket.IO connection error (attempt ${connectionAttempts}):`, error);
-        console.error('   Socket URL:', socketUrl);
-        
-        setConnectionStatus('error');
-        
-        // Force polling transport after 2 failed attempts
-        if (connectionAttempts >= 2) {
-          console.log('🔄 Switching to polling transport...');
-          newSocket.io.opts.transports = ['polling'];
-          newSocket.io.engine.close();
-          newSocket.io.engine.open();
-        }
-        
-        // Show user-friendly error message
-        if (error.message === 'timeout') {
-          toast.error('Connection timeout. Real-time features may be limited.');
-        } else {
-          toast.error('Real-time features unavailable. Some features may not work.');
-        }
+        reconnectionDelay: 3000,
+        reconnectionAttempts: 5,
+        timeout: 15000,
+        forceNew: true
       });
 
       newSocket.on('connect', () => {
         console.log('✅ Socket.IO connected:', newSocket.id);
         setConnectionStatus('connected');
-        connectionAttempts = 0; // Reset attempts on successful connection
         
         // Join user's personal room
         const userId = user._id || user.id;
@@ -161,7 +109,6 @@ export const SocketProvider = ({ children }) => {
       newSocket.on('connect_error', (error) => {
         console.error('❌ Socket.IO connection error:', error);
         console.error('   Socket URL:', socketUrl);
-        console.error('   Transport used:', newSocket.io.engine.transport.name);
         setConnectionStatus('error');
         
         // Show user-friendly error message
@@ -174,7 +121,6 @@ export const SocketProvider = ({ children }) => {
 
       newSocket.on('disconnect', (reason) => {
         console.log('🔌 Socket disconnected:', reason);
-        console.log('   Attempting to reconnect...');
         setConnectionStatus('disconnected');
         
         if (reason === 'io server disconnect') {
@@ -328,7 +274,7 @@ export const SocketProvider = ({ children }) => {
       return () => {
         newSocket.close();
       };
-      })();
+    })();
     } else {
       // Disconnect if user logs out
       if (socket) {
