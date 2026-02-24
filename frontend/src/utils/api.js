@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Hardcoded backend URL for production deployment
 // FORCE CACHE CLEAR: 2024-11-09 09:32
-const API_BASE_URL ='https://nss-latest.onrender.com/api';        // 'https://nss-portal-backend.onrender.com/api';
+const API_BASE_URL = 'https://nss-latest.onrender.com/api';
 console.log('🔗 API Base URL:', API_BASE_URL);
 console.log('🚀 Backend is ready!');
 console.log('⚠️ If you see this, the new code is deployed!');
