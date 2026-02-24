@@ -23,6 +23,7 @@ const AdminEvents = () => {
   const [submissions, setSubmissions] = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { socket } = useSocket();
 
   useEffect(() => {
@@ -36,19 +37,31 @@ const AdminEvents = () => {
     const handleNewEvent = (data) => {
       console.log('🔔 Admin: New event received:', data);
       toast.success(`New event created: ${data.event?.title || data.message}`);
-      fetchEvents();
+      
+      // Auto-refresh events list without causing re-render loops
+      setTimeout(() => {
+        fetchEvents();
+      }, 100);
     };
 
     const handleEventUpdate = (data) => {
       console.log('🔄 Admin: Event updated:', data);
       toast.info(`Event updated: ${data.event?.title || data.message}`);
-      fetchEvents();
+      
+      // Auto-refresh events list
+      setTimeout(() => {
+        fetchEvents();
+      }, 100);
     };
 
     const handleEventDelete = (data) => {
       console.log('🗑️ Admin: Event deleted:', data);
       toast.error(`Event deleted: ${data.event?.title || data.message}`);
-      fetchEvents();
+      
+      // Auto-refresh events list
+      setTimeout(() => {
+        fetchEvents();
+      }, 100);
     };
 
     // Listen for real-time events
@@ -65,12 +78,17 @@ const AdminEvents = () => {
 
   const fetchEvents = async () => {
     try {
+      // Prevent multiple simultaneous fetches
+      if (refreshing) return;
+      
+      setRefreshing(true);
       const response = await api.get('/events');
       setEvents(response.data);
     } catch (error) {
       toast.error('Failed to fetch events');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 

@@ -11,6 +11,7 @@ const StudentEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [refreshing, setRefreshing] = useState(false);
   const { socket } = useSocket();
 
   // Animate events when they load
@@ -40,27 +41,33 @@ const StudentEvents = () => {
     const handleNewEvent = (data) => {
       console.log('🔔 New event received:', data);
       toast.success(`New event: ${data.event?.title || data.message}`, {
-        duration: 5000,
-        onClick: () => {
-          // Auto-refresh events list
-          fetchEvents();
-        }
+        duration: 5000
       });
       
-      // Auto-refresh events list
-      fetchEvents();
+      // Auto-refresh events list without causing re-render loops
+      setTimeout(() => {
+        fetchEvents();
+      }, 100);
     };
 
     const handleEventUpdate = (data) => {
       console.log('🔄 Event updated:', data);
       toast.info(`Event updated: ${data.event?.title || data.message}`);
-      fetchEvents();
+      
+      // Auto-refresh events list
+      setTimeout(() => {
+        fetchEvents();
+      }, 100);
     };
 
     const handleEventDelete = (data) => {
       console.log('🗑️ Event deleted:', data);
       toast.error(`Event removed: ${data.event?.title || data.message}`);
-      fetchEvents();
+      
+      // Auto-refresh events list
+      setTimeout(() => {
+        fetchEvents();
+      }, 100);
     };
 
     // Listen for real-time events
@@ -77,6 +84,10 @@ const StudentEvents = () => {
 
   const fetchEvents = async () => {
     try {
+      // Prevent multiple simultaneous fetches
+      if (refreshing) return;
+      
+      setRefreshing(true);
       const params = filter !== 'all' ? { status: filter } : {};
       const response = await api.get('/events', { params });
       setEvents(response.data);
@@ -84,6 +95,7 @@ const StudentEvents = () => {
       toast.error('Failed to fetch events');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
