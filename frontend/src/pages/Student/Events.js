@@ -8,6 +8,8 @@ import anime from 'animejs/lib/anime.es.js';
 import { useSocket } from '../../context/SocketContext';
 
 const StudentEvents = () => {
+  console.log('🎯 Student Events component mounting...');
+  
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');

@@ -15,6 +15,8 @@ import EventModal from '../../components/Admin/EventModal';
 import { useSocket } from '../../context/SocketContext';
 
 const AdminEvents = () => {
+  console.log('🎯 Admin Events component mounting...');
+  
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
