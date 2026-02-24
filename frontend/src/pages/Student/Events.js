@@ -106,7 +106,7 @@ const StudentEvents = () => {
       console.log('🛑 Cleaning up polling interval');
       clearInterval(pollingInterval);
     };
-  }, [filterRef.current]); // Re-poll when filter changes
+  }, []); // Run once on mount, refs handle updates
 
   // Real-time event updates with stale closure prevention
   useEffect(() => {
