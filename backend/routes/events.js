@@ -124,12 +124,25 @@ router.post('/', [
 
     await event.populate('organizer', 'name email');
 
-    // Send email notifications to all students when event is published
+    console.log(`\n🎯 ===== NEW EVENT CREATED: ${event.title} =====`);
+    console.log(`   Event ID: ${event._id}`);
+    console.log(`   Status: ${event.status}`);
+
+    // Send notifications to all students when event is published
     if (req.body.status === 'published' || event.status === 'published') {
       try {
-        const students = await User.find({ role: 'student', isActive: true }).select('email name');
+        console.log('\n📋 Fetching students for notifications...');
+        const students = await User.find({ 
+          role: 'student', 
+          isActive: true,
+          email: { $exists: true, $ne: null, $ne: '' }
+        }).select('email name _id');
+        
+        console.log(`✅ Found ${students.length} registered students`);
+        
         if (students.length > 0) {
           // Send emails in background (don't wait)
+          console.log('📧 Sending email notifications...');
           sendNewEventNotification(event, students).catch(error => {
             console.error('Error sending event notifications:', error);
           });
@@ -137,27 +150,14 @@ router.post('/', [
           // Send WebSocket notification to all connected students
           const io = req.app.get('io');
           if (io) {
-            students.forEach(student => {
-              io.to(`user-${student._id}`).emit('new-event', {
-                type: 'new-event',
-                message: `New event: ${event.title}`,
-                event: {
-                  id: event._id,
-                  title: event.title,
-                  eventType: event.eventType,
-                  location: event.location,
-                  startDate: event.startDate
-                },
-                timestamp: new Date()
-              });
-            });
-
-            // Broadcast to all connected users (admin + students)
-            io.emit('new-event', {
+            console.log(`🔔 Sending WebSocket notifications...`);
+            console.log(`   Connected clients: ${io.engine.clientsCount}`);
+            
+            const notificationData = {
               type: 'new-event',
               message: `New event: ${event.title}`,
               event: {
-                id: event._id,
+                id: event._id.toString(),
                 title: event.title,
                 eventType: event.eventType,
                 location: event.location,
@@ -165,43 +165,58 @@ router.post('/', [
                 status: event.status
               },
               timestamp: new Date()
+            };
+
+            // Send to individual user rooms
+            students.forEach(student => {
+              const roomName = `user-${student._id}`;
+              io.to(roomName).emit('new-event', notificationData);
+              console.log(`   📤 Sent to room: ${roomName} (${student.name})`);
             });
+
+            // Broadcast to all connected users (admin + students)
+            console.log(`   📢 Broadcasting to all connected clients...`);
+            io.emit('new-event', notificationData);
+            io.emit('new-event-broadcast', notificationData);
+          } else {
+            console.warn('⚠️ Socket.IO not available');
           }
+
+          // Store notifications in database for offline students
+          console.log('💾 Storing notifications in database...');
+          const Notification = require('../models/Notification');
+          const notificationPromises = students.map(student => {
+            return Notification.create({
+              user: student._id,
+              type: 'new-event',
+              message: `New event: ${event.title}`,
+              event: event._id,
+              data: {
+                eventId: event._id.toString(),
+                eventTitle: event.title,
+                eventType: event.eventType,
+                location: event.location,
+                startDate: event.startDate
+              },
+              read: false
+            }).catch(err => {
+              console.error(`Failed to store notification for ${student.name}:`, err.message);
+            });
+          });
+          
+          await Promise.allSettled(notificationPromises);
+          console.log(`✅ Stored ${students.length} notifications in database`);
         }
       } catch (error) {
-        console.error('Error notifying students about new event:', error);
+        console.error('❌ Error notifying students about new event:', error);
+        console.error('   Stack:', error.stack);
         // Don't fail the request if notification fails
       }
+    } else {
+      console.log('⏭️ Event not published yet, skipping notifications');
     }
 
-    // Store notifications in database for offline students
-    try {
-      const Notification = require('../models/Notification');
-      const notificationPromises = students.map(student => {
-        return Notification.create({
-          user: student._id,
-          type: 'new-event',
-          message: `New event: ${event.title}`,
-          event: event._id, // Add event reference for auto-cleanup
-          data: {
-            eventId: event._id.toString(),
-            eventTitle: event.title,
-            eventType: event.eventType,
-            location: event.location,
-            startDate: event.startDate
-          },
-          read: false
-        }).catch(err => {
-          console.error(`Failed to store notification for ${student.name}:`, err.message);
-        });
-      });
-      
-      await Promise.allSettled(notificationPromises);
-      console.log(`✅ Stored ${students.length} notifications in database`);
-    } catch (error) {
-      console.error('Error storing notifications:', error);
-    }
-
+    console.log(`✅ Event creation completed\n`);
     res.status(201).json(event);
   } catch (error) {
     console.error('Create event error:', error);
