@@ -130,27 +130,7 @@ const AdminParticipations = () => {
     }
   };
 
-  const fetchParticipations = async () => {
-    setLoading(true);
-    try {
-      const params = {};
-      if (statusFilter !== 'all') params.status = statusFilter;
-      if (selectedEvent) params.eventId = selectedEvent;
 
-      const response = await api.get('/participations', { params });
-      const sorted = (response.data || []).sort((a, b) => {
-        const aDate = a.event?.startDate ? new Date(a.event.startDate).getTime() : new Date(a.registeredAt).getTime();
-        const bDate = b.event?.startDate ? new Date(b.event.startDate).getTime() : new Date(b.registeredAt).getTime();
-        return bDate - aDate;
-      });
-      setParticipations(sorted);
-    } catch (error) {
-      console.error('Failed to fetch participations', error);
-      toast.error('Failed to fetch participations');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getStudentAttendance = (studentId) => {
     if (!studentId || !fileUploaded) return null;
