@@ -51,8 +51,7 @@ const AdminParticipations = () => {
 
   useEffect(() => {
     fetchParticipations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEvent, statusFilter]);
+  }, [fetchParticipations, selectedEvent, statusFilter]);
 
   const { socket } = useSocket();
 

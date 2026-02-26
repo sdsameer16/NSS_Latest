@@ -11,7 +11,7 @@ const StudentEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [refreshing, setRefreshing] = useState(false);
+  // const [refreshing, setRefreshing] = useState(false); // Removed unused variable
   const [hasAnimated, setHasAnimated] = useState(false);
   const { socket } = useSocket();
 

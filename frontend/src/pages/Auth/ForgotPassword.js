@@ -7,7 +7,7 @@ import anime from 'animejs/lib/anime.es.js';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
-  const { register, handleSubmit, formState: { errors }, getValues, setFocus, setValue } = useForm();
+  const { register, handleSubmit, formState: { errors }, getValues, setValue } = useForm();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // Step 1: Email, Step 2: OTP & New Password
   const [email, setEmail] = useState('');
