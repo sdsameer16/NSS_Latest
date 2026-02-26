@@ -66,10 +66,8 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && user && socketEnabled) {
-      const socketUrl = process.env.REACT_APP_SOCKET_URL ||
-        (process.env.NODE_ENV === 'production'
-          ? 'https://nss-latest.onrender.com'
-          : 'http://localhost:5000');
+
+      const socketUrl = process.env.REACT_APP_SOCKET_URL;
 
       const newSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
