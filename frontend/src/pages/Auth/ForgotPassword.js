@@ -119,7 +119,7 @@ const ForgotPassword = () => {
         setStep(2);
         setOtpSent(true);
         setTimeLeft(600); // Reset timer to 10 minutes
-        setOtpDigits(['', '', '', '', '', '', '']); // Clear OTP digits
+        setOtpDigits(['', '', '', '', '', '']); // Clear OTP digits
         toast.success('OTP has been sent to your email!');
       } else {
         toast.error(response.data.message || 'Something went wrong');
