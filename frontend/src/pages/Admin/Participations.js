@@ -24,6 +24,27 @@ const normalizeRegNo = (value = '') =>
 
 const AdminParticipations = () => {
 
+  const [participations, setParticipations] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [attendanceData, setAttendanceData] = useState({});
+  const [fileUploaded, setFileUploaded] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const [decisions, setDecisions] = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [draftDecision, setDraftDecision] = useState('approve');
+  const [processingDecisions, setProcessingDecisions] = useState(false);
+
+  const fileInputRef = useRef(null);
+
   const fetchParticipations = React.useCallback(async () => {
     setLoading(true);
     try {

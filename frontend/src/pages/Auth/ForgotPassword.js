@@ -16,7 +16,7 @@ const ForgotPassword = () => {
   const [otpSent, setOtpSent] = useState(false);
   const formRef = useRef(null);
   const logoRef = useRef(null);
-  const otpInputRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
+  const otpInputRefs = useRef([null, null, null, null, null, null]);
   const timerRef = useRef(null);
 
   useEffect(() => {
