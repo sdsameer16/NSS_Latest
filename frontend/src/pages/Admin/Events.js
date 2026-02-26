@@ -29,7 +29,7 @@ const AdminEvents = () => {
   // Define fetchEvents first so socket handlers can use it
   const fetchEvents = useCallback(async () => {
     try {
-      setRefreshing(true);
+      // setRefreshing(true); // Removed unused
       const response = await api.get('/events');
       setEvents(response.data);
       setLoading(false);
@@ -38,7 +38,7 @@ const AdminEvents = () => {
       toast.error('Failed to fetch events');
       setLoading(false);
     } finally {
-      setRefreshing(false);
+      // setRefreshing(false); // Removed unused
     }
   }, []);
 

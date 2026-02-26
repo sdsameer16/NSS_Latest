@@ -26,7 +26,7 @@ const StudentEvents = () => {
   // Define fetchEvents first so socket handlers can use it
   const fetchEvents = useCallback(async () => {
     try {
-      setRefreshing(true);
+      // setRefreshing(true); // Removed unused
       const currentFilter = filterRef.current;
       const params = currentFilter !== 'all' ? { status: currentFilter } : {};
       const response = await api.get('/events', { params });
@@ -37,7 +37,7 @@ const StudentEvents = () => {
       toast.error('Failed to fetch events');
       setLoading(false);
     } finally {
-      setRefreshing(false);
+      // setRefreshing(false); // Removed unused
     }
   }, []);
 
