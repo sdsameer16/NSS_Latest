@@ -8,30 +8,42 @@ import anime from 'animejs/lib/anime.es.js';
 import { useSocket } from '../../context/SocketContext';
 
 const StudentEvents = () => {
-  console.log('🎯 Student Events component mounting...');
-
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [hasAnimated, setHasAnimated] = useState(false);
   const { socket } = useSocket();
 
-  // Refs to prevent stale closures
+  // Ref to access latest filter value  
   const filterRef = useRef(filter);
-  const socketRef = useRef(socket);
 
-  // Keep refs in sync with state
+  // Keep ref in sync with state
   useEffect(() => {
     filterRef.current = filter;
   }, [filter]);
 
-  useEffect(() => {
-    socketRef.current = socket;
-  }, [socket]);
+  // Define fetchEvents first so socket handlers can use it
+  const fetchEvents = useCallback(async () => {
+    try {
+      setRefreshing(true);
+      const currentFilter = filterRef.current;
+      const params = currentFilter !== 'all' ? { status: currentFilter } : {};
+      const response = await api.get('/events', { params });
+      setEvents(response.data);
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      toast.error('Failed to fetch events');
+      setLoading(false);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
-  // Animate events when they load
+  // Animate events only on initial load (not on updates)
   useEffect(() => {
-    if (!loading && events.length > 0) {
+    if (!loading && events.length > 0 && !hasAnimated) {
       anime({
         targets: '.event-card',
         scale: [0.9, 1],
@@ -41,146 +53,51 @@ const StudentEvents = () => {
         duration: 600,
         easing: 'easeOutCubic'
       });
+      setHasAnimated(true);
     }
-  }, [loading, events]);
+  }, [loading, events, hasAnimated]);
 
+  // Initial fetch and when filter changes
   useEffect(() => {
     fetchEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, fetchEvents]);
 
-  // HTTP polling as primary update method with debugging
+  // Real-time event updates via Socket.IO
   useEffect(() => {
-    console.log('🔄 Starting HTTP polling for events updates...');
-    console.log('   Filter:', filterRef.current);
-    console.log('   Socket available:', !!socketRef.current);
-
-    let pollingCount = 0;
-
-    const pollEvents = async () => {
-      try {
-        pollingCount++;
-        console.log(`🔄 Polling attempt #${pollingCount}`);
-
-        // Use functional update to prevent stale closures
-        setRefreshing(prev => {
-          if (prev) {
-            console.log('⚠️ Previous poll still running, skipping...');
-            return prev;
-          }
-          return true;
-        });
-
-        const currentFilter = filterRef.current;
-        const params = currentFilter !== 'all' ? { status: currentFilter } : {};
-
-        console.log('   Fetching with params:', params);
-        const response = await api.get('/events', { params });
-
-        console.log('   Response status:', response.status);
-        console.log('   Events received:', response.data?.length || 0);
-
-        // Functional update to prevent stale state issues
-        setEvents(response.data || []);
-
-        setRefreshing(false);
-
-      } catch (error) {
-        console.error('❌ Polling error:', error);
-        console.error('   Error details:', error.response?.data || error.message);
-
-        setRefreshing(false);
-
-        // Show error toast only on actual failures
-        if (pollingCount % 5 === 0) { // Every 10 seconds (5 polls)
-          toast.error('Failed to update events. Please refresh the page.');
-        }
-      }
-    };
-
-    // Initial poll
-    pollEvents();
-
-    // Set up polling interval
-    const pollingInterval = setInterval(pollEvents, 2000); // 2 seconds
-
-    return () => {
-      console.log('🛑 Cleaning up polling interval');
-      clearInterval(pollingInterval);
-    };
-  }, []); // Run once on mount, refs handle updates
-
-  // Real-time event updates with stale closure prevention
-  useEffect(() => {
-    const currentSocket = socketRef.current;
-    if (!currentSocket) return;
+    if (!socket) return;
 
     const handleNewEvent = (data) => {
-      console.log('🔔 New event received:', data);
       toast.success(`New event: ${data.event?.title || data.message}`, {
-        duration: 5000
+        duration: 5000,
+        icon: '🎉'
       });
-
-      // Use ref to get latest fetchEvents function
-      setTimeout(() => {
-        fetchEvents();
-      }, 100);
+      fetchEvents();
     };
 
     const handleEventUpdate = (data) => {
-      console.log('🔄 Event updated:', data);
       toast.info(`Event updated: ${data.event?.title || data.message}`);
-
-      setTimeout(() => {
-        fetchEvents();
-      }, 100);
+      fetchEvents();
     };
 
     const handleEventDelete = (data) => {
-      console.log('🗑️ Event deleted:', data);
       toast.error(`Event removed: ${data.event?.title || data.message}`);
-
-      setTimeout(() => {
-        fetchEvents();
-      }, 100);
+      fetchEvents();
     };
 
-    // Listen for real-time events
-    currentSocket.on('new-event', handleNewEvent);
-    currentSocket.on('new-event-broadcast', handleNewEvent);
-    currentSocket.on('event-updated', handleEventUpdate);
-    currentSocket.on('event-deleted', handleEventDelete);
+    // Register socket event listeners
+    socket.on('new-event', handleNewEvent);
+    socket.on('new-event-broadcast', handleNewEvent);
+    socket.on('event-updated', handleEventUpdate);
+    socket.on('event-deleted', handleEventDelete);
 
+    // Cleanup
     return () => {
-      currentSocket.off('new-event', handleNewEvent);
-      currentSocket.off('new-event-broadcast', handleNewEvent);
-      currentSocket.off('event-updated', handleEventUpdate);
-      currentSocket.off('event-deleted', handleEventDelete);
+      socket.off('new-event', handleNewEvent);
+      socket.off('new-event-broadcast', handleNewEvent);
+      socket.off('event-updated', handleEventUpdate);
+      socket.off('event-deleted', handleEventDelete);
     };
-
-  }, [socketRef.current]); // Only re-attach when socket changes
-
-  const fetchEvents = useCallback(async () => {
-    try {
-      // Use functional update to prevent stale closures
-      setRefreshing(prev => {
-        if (prev) return true; // Prevent multiple simultaneous fetches
-        return true;
-      });
-
-      const currentFilter = filterRef.current;
-      const params = currentFilter !== 'all' ? { status: currentFilter } : {};
-      const response = await api.get('/events', { params });
-
-      // Functional update to prevent stale state issues
-      setEvents(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch events');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+  }, [socket, fetchEvents]);
 
   const handleRegister = async (eventId) => {
     try {

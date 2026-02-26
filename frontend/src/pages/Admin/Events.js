@@ -15,8 +15,6 @@ import EventModal from '../../components/Admin/EventModal';
 import { useSocket } from '../../context/SocketContext';
 
 const AdminEvents = () => {
-  console.log('🎯 Admin Events component mounting...');
-  
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,138 +26,63 @@ const AdminEvents = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { socket } = useSocket();
   
-  // Refs to prevent stale closures
-  const socketRef = useRef(socket);
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    socketRef.current = socket;
-  }, [socket]);
-
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  // HTTP polling as primary update method with debugging
-  useEffect(() => {
-    console.log('🔄 Admin: Starting HTTP polling for events updates...');
-    console.log('   Socket available:', !!socketRef.current);
-    
-    let pollingCount = 0;
-    
-    const pollEvents = async () => {
-      try {
-        pollingCount++;
-        console.log(`🔄 Admin: Polling attempt #${pollingCount}`);
-        
-        // Use functional update to prevent stale closures
-        setRefreshing(prev => {
-          if (prev) {
-            console.log('⚠️ Previous admin poll still running, skipping...');
-            return prev;
-          }
-          return true;
-        });
-        
-        console.log('   Fetching all events...');
-        const response = await api.get('/events');
-        
-        console.log('   Response status:', response.status);
-        console.log('   Events received:', response.data?.length || 0);
-        
-        // Functional update to prevent stale state issues
-        setEvents(response.data || []);
-        
-        setRefreshing(false);
-        
-      } catch (error) {
-        console.error('❌ Admin polling error:', error);
-        console.error('   Error details:', error.response?.data || error.message);
-        
-        setRefreshing(false);
-        
-        // Show error toast only on actual failures
-        if (pollingCount % 5 === 0) { // Every 10 seconds (5 polls)
-          toast.error('Failed to update events. Please refresh the page.');
-        }
-      }
-    };
-    
-    // Initial poll
-    pollEvents();
-    
-    // Set up polling interval
-    const pollingInterval = setInterval(pollEvents, 2000); // 2 seconds
-
-    return () => {
-      console.log('🛑 Admin: Cleaning up polling interval');
-      clearInterval(pollingInterval);
-    };
-  }, []); // Admin polling runs regardless
-
-  // Real-time event updates with stale closure prevention
-  useEffect(() => {
-    const currentSocket = socketRef.current;
-    if (!currentSocket) return;
-
-    const handleNewEvent = (data) => {
-      console.log('🔔 Admin: New event received:', data);
-      toast.success(`New event created: ${data.event?.title || data.message}`);
-      
-      setTimeout(() => {
-        fetchEvents();
-      }, 100);
-    };
-
-    const handleEventUpdate = (data) => {
-      console.log('🔄 Admin: Event updated:', data);
-      toast.info(`Event updated: ${data.event?.title || data.message}`);
-      
-      setTimeout(() => {
-        fetchEvents();
-      }, 100);
-    };
-
-    const handleEventDelete = (data) => {
-      console.log('🗑️ Admin: Event deleted:', data);
-      toast.error(`Event deleted: ${data.event?.title || data.message}`);
-      
-      setTimeout(() => {
-        fetchEvents();
-      }, 100);
-    };
-
-    // Listen for real-time events
-    currentSocket.on('new-event', handleNewEvent);
-    currentSocket.on('event-updated', handleEventUpdate);
-    currentSocket.on('event-deleted', handleEventDelete);
-
-    return () => {
-      currentSocket.off('new-event', handleNewEvent);
-      currentSocket.off('event-updated', handleEventUpdate);
-      currentSocket.off('event-deleted', handleEventDelete);
-    };
-  }, [socketRef.current]); // Only re-attach when socket changes
-
+  // Define fetchEvents first so socket handlers can use it
   const fetchEvents = useCallback(async () => {
     try {
-      // Use functional update to prevent stale closures
-      setRefreshing(prev => {
-        if (prev) return true; // Prevent multiple simultaneous fetches
-        return true;
-      });
-      
+      setRefreshing(true);
       const response = await api.get('/events');
-      
-      // Functional update to prevent stale state issues
       setEvents(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch events');
-    } finally {
       setLoading(false);
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      toast.error('Failed to fetch events');
+      setLoading(false);
+    } finally {
       setRefreshing(false);
     }
   }, []);
+
+  // Initial fetch on mount
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
+  // Real-time event updates via Socket.IO
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNewEvent = (data) => {
+      toast.success(`New event created: ${data.event?.title || data.message}`, {
+        duration: 5000,
+        icon: '🎉'
+      });
+      fetchEvents();
+    };
+
+    const handleEventUpdate = (data) => {
+      toast.info(`Event updated: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    const handleEventDelete = (data) => {
+      toast.error(`Event deleted: ${data.event?.title || data.message}`);
+      fetchEvents();
+    };
+
+    // Register socket event listeners
+    socket.on('new-event', handleNewEvent);
+    socket.on('new-event-broadcast', handleNewEvent);
+    socket.on('event-updated', handleEventUpdate);
+    socket.on('event-deleted', handleEventDelete);
+
+    // Cleanup
+    return () => {
+      socket.off('new-event', handleNewEvent);
+      socket.off('new-event-broadcast', handleNewEvent);
+      socket.off('event-updated', handleEventUpdate);
+      socket.off('event-deleted', handleEventDelete);
+    };
+  }, [socket, fetchEvents]);
 
   const viewSubmissionFile = (file) => {
     // Direct viewing approach based on file type

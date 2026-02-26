@@ -35,15 +35,12 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      console.log('🔄 Fetching user data...');
       const response = await api.get('/auth/me');
       const userData = response.data;
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
-      console.log('✅ User fetched:', userData.name, 'Role:', userData.role);
     } catch (error) {
-      console.error('❌ Fetch user error:', error);
-      // Only logout if it's an authentication error
+      console.error('Fetch user error:', error);
       if (error.response?.status === 401) {
         logout();
       }
@@ -54,21 +51,18 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('🔄 Attempting login...');
       const response = await api.post('/auth/login', { email, password });
       const { token: newToken, user: userData } = response.data;
       
-      // Store token and user data
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(newToken);
       setUser(userData);
       
-      console.log('✅ Login successful:', userData.name);
       toast.success('Login successful!');
       return { success: true, user: userData };
     } catch (error) {
-      console.error('❌ Login error:', error);
+      console.error('Login error:', error);
       const message = error.response?.data?.message || 'Login failed. Please try again.';
       toast.error(message);
       return { success: false, error: message };
@@ -77,7 +71,6 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      console.log('🔄 Attempting registration...');
       const response = await api.post('/auth/register', userData);
       const { token: newToken, user: userDataResponse } = response.data;
       
@@ -86,11 +79,10 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(userDataResponse);
       
-      console.log('✅ Registration successful:', userDataResponse.name);
       toast.success('Registration successful!');
       return { success: true, user: userDataResponse };
     } catch (error) {
-      console.error('❌ Registration error:', error);
+      console.error('Registration error:', error);
       const message = error.response?.data?.message || 'Registration failed. Please try again.';
       toast.error(message);
       return { success: false, error: message };
@@ -98,7 +90,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    console.log('🔄 Logging out...');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken(null);

@@ -51,7 +51,6 @@ export const SocketProvider = ({ children }) => {
         }));
         setNotifications(formattedNotifications);
         setUnreadCount(response.data.unreadCount || 0);
-        console.log(`📬 Loaded ${formattedNotifications.length} stored notifications (${response.data.unreadCount} unread)`);
       }
     } catch (error) {
       console.error('Error fetching stored notifications:', error);
@@ -67,21 +66,11 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && user && socketEnabled) {
-      console.log('🔌 Initializing Socket.IO connection for user:', user);
-      console.log('   User ID:', user._id || user.id);
-      console.log('   User Role:', user.role);
-
-      // Connect to Socket.IO server
-      // Use environment-based URL for flexibility
       const socketUrl = process.env.REACT_APP_SOCKET_URL ||
         (process.env.NODE_ENV === 'production'
           ? 'https://nss-latest.onrender.com'
           : 'http://localhost:5000');
 
-      console.log('   Connecting to:', socketUrl);
-      console.log('   Environment:', process.env.NODE_ENV);
-
-      // Simple connection with fallback
       const newSocket = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -92,17 +81,10 @@ export const SocketProvider = ({ children }) => {
       });
 
       newSocket.on('connect', () => {
-        console.log('✅ Socket.IO connected:', newSocket.id);
         setConnectionStatus('connected');
-
-        // Join user's personal room
         const userId = user._id || user.id;
-        console.log('👤 Joining user room:', userId);
         if (userId) {
           newSocket.emit('join-user-room', userId.toString());
-          console.log('✅ Joined room: user-' + userId);
-        } else {
-          console.error('❌ No user ID found:', user);
         }
       });
 
@@ -120,16 +102,13 @@ export const SocketProvider = ({ children }) => {
       });
 
       newSocket.on('disconnect', (reason) => {
-        console.log('🔌 Socket disconnected:', reason);
         setConnectionStatus('disconnected');
-
         if (reason === 'io server disconnect') {
           toast.error('Server disconnected. Reconnecting...');
         }
       });
 
       newSocket.on('reconnect', (attemptNumber) => {
-        console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
         setConnectionStatus('connected');
         toast.success('Real-time connection restored!');
       });
@@ -142,7 +121,6 @@ export const SocketProvider = ({ children }) => {
 
       // Listen for new event notifications
       newSocket.on('new-event', async (data) => {
-        console.log('🔔 New event notification received:', data);
         const notification = {
           id: Date.now(),
           type: 'new-event',
@@ -173,12 +151,9 @@ export const SocketProvider = ({ children }) => {
 
       // Listen for participation approval notifications
       newSocket.on('participation-approved', async (data) => {
-        console.log('🔔 Participation approved notification received:', data);
-
         // Check if this notification is for the current user
         const userId = user._id || user.id;
         if (data.targetUserId && data.targetUserId !== userId.toString()) {
-          console.log('Notification not for current user, skipping');
           return;
         }
 
@@ -206,7 +181,6 @@ export const SocketProvider = ({ children }) => {
 
       // Also listen for broadcast events
       newSocket.on('new-event-broadcast', async (data) => {
-        console.log('🔔 Broadcast event notification received:', data);
         // Only process if user is a student
         if (user.role === 'student') {
           const notification = {
@@ -235,7 +209,6 @@ export const SocketProvider = ({ children }) => {
       newSocket.on('participation-approved-broadcast', async (data) => {
         const userId = user._id || user.id;
         if (data.targetUserId === userId.toString()) {
-          console.log('🔔 Broadcast approval notification for current user:', data);
           // Same handling as regular participation-approved
           const notification = {
             id: Date.now(),
@@ -261,12 +234,11 @@ export const SocketProvider = ({ children }) => {
       });
 
       newSocket.on('room-joined', (data) => {
-        console.log('✅ Successfully joined room:', data);
+        // Silently acknowledge room join
       });
 
-      // Debug: Listen for all events
+      // Log only errors, not all events
       newSocket.onAny((event, ...args) => {
-        console.log('📡 Socket event received:', event, args);
       });
 
       setSocket(newSocket);
