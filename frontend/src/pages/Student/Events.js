@@ -11,7 +11,7 @@ const StudentEvents = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  // const [refreshing, setRefreshing] = useState(false); // Removed unused variable
+  // const [refreshing, setRefreshing] = useState(false); // eslint-disable-line no-unused-vars
   const [hasAnimated, setHasAnimated] = useState(false);
   const { socket } = useSocket();
 
@@ -26,7 +26,7 @@ const StudentEvents = () => {
   // Define fetchEvents first so socket handlers can use it
   const fetchEvents = useCallback(async () => {
     try {
-      // setRefreshing(true); // Removed unused
+      // setRefreshing(true); // eslint-disable-line no-unused-vars
       const currentFilter = filterRef.current;
       const params = currentFilter !== 'all' ? { status: currentFilter } : {};
       const response = await api.get('/events', { params });

@@ -19,7 +19,7 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [socketEnabled] = useState(true); // Re-enable for real-time updates
+  const [socketEnabled] = useState(true); // eslint-disable-line no-unused-vars
   const [connectionStatus, setConnectionStatus] = useState('disconnected'); // Track connection status
 
   const fetchStoredNotifications = useCallback(async () => {

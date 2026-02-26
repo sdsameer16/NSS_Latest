@@ -26,6 +26,12 @@ const AdminParticipations = () => {
 
   // ...existing code...
 
+  const [participations, setParticipations] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+
   const fetchParticipations = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -47,12 +53,6 @@ const AdminParticipations = () => {
       setLoading(false);
     }
   }, [statusFilter, selectedEvent]);
-
-  const [participations, setParticipations] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
 
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -76,7 +76,7 @@ const AdminParticipations = () => {
 
   useEffect(() => {
     fetchParticipations();
-  }, [fetchParticipations, selectedEvent, statusFilter]);
+  }, [fetchParticipations]);
 
   const { socket } = useSocket();
 
@@ -104,7 +104,7 @@ const AdminParticipations = () => {
       socket.off('new-participation', handleNewParticipation);
       socket.off('participation-updated', handleParticipationUpdated);
     };
-  }, [socket, selectedEvent]);
+  }, [socket, selectedEvent, fetchParticipations]);
 
   useEffect(() => {
     if (fileUploaded) {

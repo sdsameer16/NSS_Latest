@@ -23,13 +23,13 @@ const AdminEvents = () => {
   const [submissions, setSubmissions] = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
-  // const [refreshing, setRefreshing] = useState(false); // Removed unused variable
+  // const [refreshing, setRefreshing] = useState(false); // eslint-disable-line no-unused-vars
   const { socket } = useSocket();
   
   // Define fetchEvents first so socket handlers can use it
   const fetchEvents = useCallback(async () => {
     try {
-      // setRefreshing(true); // Removed unused
+    // setRefreshing(true); // eslint-disable-line no-unused-vars
       const response = await api.get('/events');
       setEvents(response.data);
       setLoading(false);
@@ -38,7 +38,7 @@ const AdminEvents = () => {
       toast.error('Failed to fetch events');
       setLoading(false);
     } finally {
-      // setRefreshing(false); // Removed unused
+      // setRefreshing(false); // eslint-disable-line no-unused-vars
     }
   }, []);
 

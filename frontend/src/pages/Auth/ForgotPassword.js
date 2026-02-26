@@ -48,7 +48,7 @@ const ForgotPassword = () => {
         otpInputRefs[0].current.focus();
       }, 100);
     }
-  }, [step, otpInputRefs]);
+  }, [step]);
 
   // Countdown timer effect
   useEffect(() => {
