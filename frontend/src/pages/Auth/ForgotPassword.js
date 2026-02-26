@@ -16,7 +16,12 @@ const ForgotPassword = () => {
   const [otpSent, setOtpSent] = useState(false);
   const formRef = useRef(null);
   const logoRef = useRef(null);
-  const otpInputRefs = useRef([null, null, null, null, null, null]);
+  const otpInputRef1 = useRef(null);
+  const otpInputRef2 = useRef(null);
+  const otpInputRef3 = useRef(null);
+  const otpInputRef4 = useRef(null);
+  const otpInputRef5 = useRef(null);
+  const otpInputRef6 = useRef(null);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -42,10 +47,10 @@ const ForgotPassword = () => {
 
   // Auto-focus first OTP box when step changes to 2
   useEffect(() => {
-    if (step === 2 && otpInputRefs[0].current) {
+    if (step === 2 && otpInputRef1.current) {
       // Small delay to ensure the field is rendered
       setTimeout(() => {
-        otpInputRefs[0].current.focus();
+        otpInputRef1.current.focus();
       }, 100);
     }
   }, [step]);
@@ -71,6 +76,8 @@ const ForgotPassword = () => {
   }, [otpSent, timeLeft]);
 
   // Handle OTP digit input
+  const otpInputRefs = [otpInputRef1, otpInputRef2, otpInputRef3, otpInputRef4, otpInputRef5, otpInputRef6];
+
   const handleOtpChange = (index, value) => {
     if (value.length > 1) return; // Only allow single digit
     
