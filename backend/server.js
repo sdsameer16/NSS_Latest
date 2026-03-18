@@ -4,6 +4,9 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const http = require('http');
+const helmet = require('helmet');
+const hpp = require('hpp');
+const rateLimit = require('express-rate-limit');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -19,6 +22,11 @@ console.log('');
 
 const app = express();
 const server = http.createServer(app);
+
+// Required when running behind Render/Netlify proxies for correct client IP detection.
+const trustProxySetting = process.env.TRUST_PROXY;
+app.set('trust proxy', trustProxySetting !== undefined ? trustProxySetting : 1);
+app.disable('x-powered-by');
 
 // Initialize Socket.IO
 const io = require('socket.io')(server, {
@@ -40,14 +48,69 @@ app.set('io', io);
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+app.use(hpp());
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '100kb' }));
+app.use(express.urlencoded({
+  extended: true,
+  limit: process.env.URLENCODED_BODY_LIMIT || '100kb',
+  parameterLimit: Number(process.env.PARAMETER_LIMIT || 1000)
+}));
+
+// Basic proxy-chain sanity check to reduce header spoofing abuse.
+app.use((req, res, next) => {
+  const xForwardedFor = req.headers['x-forwarded-for'];
+
+  if (!xForwardedFor || typeof xForwardedFor !== 'string') {
+    return next();
+  }
+
+  const proxyChainLength = xForwardedFor.split(',').map(ip => ip.trim()).filter(Boolean).length;
+  const maxProxyChain = Number(process.env.MAX_PROXY_CHAIN || 5);
+
+  if (proxyChainLength > maxProxyChain) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid proxy chain.'
+    });
+  }
+
+  return next();
+});
+
+// Rate limiting defaults tuned for moderate traffic spikes.
+const apiRateLimiter = rateLimit({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
+  max: Number(process.env.RATE_LIMIT_MAX || 1000),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many requests, please try again shortly.'
+  }
+});
+
+// Stricter limits for authentication endpoints to reduce abuse.
+const authRateLimiter = rateLimit({
+  windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 10 * 60 * 1000),
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX || 30),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many auth attempts. Please wait a few minutes.'
+  }
+});
+
+app.use('/api', apiRateLimiter);
 
 // Serve uploaded files statically (for local storage fallback)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
+app.use('/api/auth', authRateLimiter, require('./routes/auth'));
 app.use('/api/events', require('./routes/events'));
 app.use('/api/participations', require('./routes/participations'));
 app.use('/api/contributions', require('./routes/contributions'));
@@ -135,6 +198,12 @@ cron.schedule('0 * * * *', async () => {
 console.log('✅ Notification cleanup scheduler initialized (runs every hour)');
 
 const PORT = process.env.PORT || 5000;
+
+// Timeout tuning helps reduce Slowloris-style resource exhaustion.
+server.headersTimeout = Number(process.env.HEADERS_TIMEOUT_MS || 65000);
+server.requestTimeout = Number(process.env.REQUEST_TIMEOUT_MS || 30000);
+server.keepAliveTimeout = Number(process.env.KEEP_ALIVE_TIMEOUT_MS || 5000);
+
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Socket.IO server initialized`);
