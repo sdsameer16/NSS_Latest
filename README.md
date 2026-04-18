@@ -13,6 +13,9 @@ A comprehensive web-based system for managing NSS (National Service Scheme) even
 - Real-time notifications
 
 ## 🎨 Landing Page
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/fe565a5d-1a4f-40fc-8945-31f6a6e71f15" />
+
+<img width="1910" height="918" alt="image" src="https://github.com/user-attachments/assets/38724740-a273-4be3-b67c-3d150c8529c2" />
 
 The landing page includes:
 - **Official NSS header** with government branding and social media links
@@ -26,6 +29,26 @@ The landing page includes:
 - **Feature highlights** - Event Management, Report Submission, Digital Certificates
 - **Statistics dashboard** with key metrics
 - **Fully responsive design** optimized for all devices
+  <img width="1920" height="918" alt="image" src="https://github.com/user-attachments/assets/53d318f9-c099-4ca5-aca3-8dfb48a54090" />
+<img width="1920" height="914" alt="image" src="https://github.com/user-attachments/assets/ace6482b-89c0-4206-8553-bb6d759c0b9d" />
+<img width="1920" height="920" alt="image" src="https://github.com/user-attachments/assets/3e19f074-423e-4456-b278-3f1e91189a09" />
+For On-Duty Attandence if , we came to our Events
+<img width="1918" height="918" alt="image" src="https://github.com/user-attachments/assets/3b051925-1c17-4517-8f13-ddc48f204784" />
+The Problems with nessded by our voluneers,will be remoted in this platform itself
+<img width="1920" height="914" alt="image" src="https://github.com/user-attachments/assets/19c5eb0e-a4ce-4403-ac26-b931ed97f7c0" />
+As a Motivation for them we will track there participation in this tab
+<img width="881" height="627" alt="image" src="https://github.com/user-attachments/assets/ff4ecb09-5176-4c3c-8109-b54020afd8bf" />
+For Here the Volunteer (Student Interface) Will look like
+<img width="1920" height="918" alt="image" src="https://github.com/user-attachments/assets/b3f8fc6d-3c11-4758-9f87-027b23aa519e" />
+<img width="1920" height="920" alt="image" src="https://github.com/user-attachments/assets/aa792fc2-a409-435c-96c4-df615a8c3a0c" />
+<img width="1752" height="830" alt="image" src="https://github.com/user-attachments/assets/c5b1bd15-fb32-4129-8a23-59e36a70332b" />
+
+Along with other mantory Features like
+
+
+
+
+
 
 ## 📋 Prerequisites
 
@@ -208,6 +231,7 @@ This project is licensed under the ISC License.
 ## 👥 Support
 
 For support and queries, please contact the development team or create an issue in the repository.
+My linkedIn  Profile is : https://www.linkedin.com/in/syedsameerayaz
 
 ---
 
